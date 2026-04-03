@@ -89,7 +89,7 @@ export default function Leaderboard() {
                   </span>
                 </span>
                 <span className="lb-col-stat">
-                  <LuZap style={{ color: '#818cf8' }} /> {entry.xp}
+                  <LuZap style={{ color: '#D4645C' }} /> {entry.xp}
                 </span>
                 <span className="lb-col-stat">
                   <LuTarget style={{ color: '#6ee7b7' }} /> {entry.quizzes}

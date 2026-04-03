@@ -33,7 +33,7 @@ export default function Profile() {
 
         <div className="profile-stats-row">
           <div className="profile-stat">
-            <LuZap className="profile-stat-icon" style={{ color: '#818cf8' }} />
+            <LuZap className="profile-stat-icon" style={{ color: '#D4645C' }} />
             <div>
               <div className="profile-stat-value">{user?.xp || 0}</div>
               <div className="profile-stat-label">Total XP</div>
@@ -47,7 +47,7 @@ export default function Profile() {
             </div>
           </div>
           <div className="profile-stat">
-            <LuTrophy className="profile-stat-icon" style={{ color: '#f59e0b' }} />
+            <LuTrophy className="profile-stat-icon" style={{ color: '#E0A546' }} />
             <div>
               <div className="profile-stat-value">{earnedBadgeIds.length}</div>
               <div className="profile-stat-label">Badges</div>
@@ -61,7 +61,7 @@ export default function Profile() {
             </div>
           </div>
           <div className="profile-stat">
-            <LuFlame className="profile-stat-icon" style={{ color: '#f59e0b' }} />
+            <LuFlame className="profile-stat-icon" style={{ color: '#E0A546' }} />
             <div>
               <div className="profile-stat-value">{user?.loginStreak || 0}</div>
               <div className="profile-stat-label">Day Streak</div>

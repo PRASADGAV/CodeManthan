@@ -32,17 +32,14 @@ export default function Register() {
       setFormError('Password must be at least 6 characters');
       return;
     }
-
     const success = register(formData);
     if (success) navigate('/dashboard');
   };
 
   return (
     <div className="auth-page">
-      <div className="auth-bg">
-        <div className="auth-orb auth-orb-1"></div>
-        <div className="auth-orb auth-orb-2"></div>
-      </div>
+      <div className="auth-bg-pattern"></div>
+      <div className="auth-bg-glow"></div>
 
       <div className="auth-container">
         <Link to="/" className="auth-logo">
@@ -90,16 +87,8 @@ export default function Register() {
               <label htmlFor="name">Full Name</label>
               <div className="input-wrapper">
                 <LuUser className="input-icon" />
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  className="input-field input-with-icon"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
+                <input type="text" id="name" name="name" className="input-field input-with-icon"
+                  placeholder="Enter your full name" value={formData.name} onChange={handleChange} required />
               </div>
             </div>
 
@@ -107,16 +96,8 @@ export default function Register() {
               <label htmlFor="reg-email">Email</label>
               <div className="input-wrapper">
                 <LuMail className="input-icon" />
-                <input
-                  type="email"
-                  id="reg-email"
-                  name="email"
-                  className="input-field input-with-icon"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
+                <input type="email" id="reg-email" name="email" className="input-field input-with-icon"
+                  placeholder="Enter your email" value={formData.email} onChange={handleChange} required />
               </div>
             </div>
 
@@ -125,52 +106,28 @@ export default function Register() {
                 <label htmlFor="reg-password">Password</label>
                 <div className="input-wrapper">
                   <LuLock className="input-icon" />
-                  <input
-                    type="password"
-                    id="reg-password"
-                    name="password"
-                    className="input-field input-with-icon"
-                    placeholder="Min 6 characters"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="password" id="reg-password" name="password" className="input-field input-with-icon"
+                    placeholder="Min 6 characters" value={formData.password} onChange={handleChange} required />
                 </div>
               </div>
               <div className="input-group">
-                <label htmlFor="confirm-password">Confirm Password</label>
+                <label htmlFor="confirm-password">Confirm</label>
                 <div className="input-wrapper">
                   <LuLock className="input-icon" />
-                  <input
-                    type="password"
-                    id="confirm-password"
-                    name="confirmPassword"
-                    className="input-field input-with-icon"
-                    placeholder="Confirm password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="password" id="confirm-password" name="confirmPassword" className="input-field input-with-icon"
+                    placeholder="Confirm password" value={formData.confirmPassword} onChange={handleChange} required />
                 </div>
               </div>
             </div>
 
             <div className="input-group">
               <label htmlFor="classCode">Class Code (Optional)</label>
-              <input
-                type="text"
-                id="classCode"
-                name="classCode"
-                className="input-field"
-                placeholder="Enter class code to join a class"
-                value={formData.classCode}
-                onChange={handleChange}
-              />
+              <input type="text" id="classCode" name="classCode" className="input-field"
+                placeholder="Enter class code to join a class" value={formData.classCode} onChange={handleChange} />
             </div>
 
             <button type="submit" className="btn btn-primary btn-lg auth-submit" id="register-submit">
-              Create Account
-              <LuArrowRight />
+              Create Account <LuArrowRight />
             </button>
           </form>
 

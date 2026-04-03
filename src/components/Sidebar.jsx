@@ -1,98 +1,120 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
 import {
   LuLayoutDashboard,
   LuBookOpen,
-  LuTrophy,
   LuRoute,
+  LuTrophy,
   LuUser,
   LuUsers,
-  LuGraduationCap,
-  LuMenu,
   LuX,
+  LuFileText,
 } from 'react-icons/lu';
 
-export default function Sidebar() {
-  const { user, isStudent, isEducator } = useAuth();
-  const [open, setOpen] = useState(false);
-  const location = useLocation();
-
-  const isActive = (path) => location.pathname === path;
-
-  const navItems = isStudent ? [
-    { section: 'MAIN', items: [
-      { to: '/student-dashboard', icon: <LuLayoutDashboard />, label: 'Dashboard' },
-      { to: '/quiz/select', icon: <LuBookOpen />, label: 'Take Quiz' },
-      { to: '/learning-path', icon: <LuRoute />, label: 'Learning Path', badge: 'AI' },
-    ]},
-    { section: 'COMMUNITY', items: [
-      { to: '/leaderboard', icon: <LuTrophy />, label: 'Leaderboard' },
-      { to: '/profile', icon: <LuUser />, label: 'Profile & Badges' },
-    ]},
-  ] : [
-    { section: 'MAIN', items: [
-      { to: '/educator-dashboard', icon: <LuLayoutDashboard />, label: 'Dashboard' },
-    ]},
-    { section: 'COMMUNITY', items: [
-      { to: '/leaderboard', icon: <LuTrophy />, label: 'Leaderboard' },
-      { to: '/profile', icon: <LuUser />, label: 'Profile' },
-    ]},
-  ];
+export default function Sidebar({ isOpen, onClose }) {
+  const { user } = useAuth();
+  const isStudent = user?.role === 'student';
 
   return (
-    <>
-      {/* Mobile menu button - rendered in navbar area via CSS */}
-      <button className="mobile-menu-btn sidebar-toggle" onClick={() => setOpen(!open)}>
-        {open ? <LuX /> : <LuMenu />}
-      </button>
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+      {/* Header */}
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">🧠</div>
+          <span className="sidebar-logo-text">CodeManthan</span>
+        </div>
+        <button className="sidebar-close-btn" onClick={onClose}>
+          <LuX />
+        </button>
+      </div>
 
-      {/* Overlay */}
-      <div 
-        className={`sidebar-overlay ${open ? 'visible' : ''}`}
-        onClick={() => setOpen(false)}
-      />
+      {/* Navigation */}
+      <nav className="sidebar-nav">
+        <span className="sidebar-section-title">Main</span>
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${open ? 'open' : ''}`} id="main-sidebar">
-        <div className="sidebar-header">
-          <NavLink to="/dashboard" className="sidebar-logo" onClick={() => setOpen(false)}>
-            <div className="logo-icon">🧠</div>
-            <span className="logo-text">CodeManthan</span>
+        <NavLink
+          to={isStudent ? '/student-dashboard' : '/educator-dashboard'}
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          onClick={onClose}
+        >
+          <LuLayoutDashboard />
+          <span>Dashboard</span>
+        </NavLink>
+
+        <NavLink
+          to="/quiz/select"
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          onClick={onClose}
+        >
+          <LuBookOpen />
+          <span>Take Quiz</span>
+        </NavLink>
+
+        <NavLink
+          to="/pdf-quiz"
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          onClick={onClose}
+        >
+          <LuFileText />
+          <span>PDF Quiz</span>
+          <span className="sidebar-badge">AI</span>
+        </NavLink>
+
+        {isStudent && (
+          <NavLink
+            to="/learning-path"
+            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+            onClick={onClose}
+          >
+            <LuRoute />
+            <span>Learning Path</span>
+            <span className="sidebar-badge">AI</span>
           </NavLink>
-        </div>
+        )}
 
-        <nav className="sidebar-nav">
-          {navItems.map((section) => (
-            <div className="nav-section" key={section.section}>
-              <div className="nav-section-title">{section.section}</div>
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={`nav-item ${isActive(item.to) ? 'active' : ''}`}
-                  onClick={() => setOpen(false)}
-                  id={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                  {item.badge && <span className="nav-badge">{item.badge}</span>}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
+        <span className="sidebar-section-title">Community</span>
 
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">{user?.avatar || '🧑‍🎓'}</div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{user?.name || 'User'}</div>
-              <div className="sidebar-user-role">{user?.role || 'student'}</div>
-            </div>
-          </div>
+        <NavLink
+          to="/leaderboard"
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          onClick={onClose}
+        >
+          <LuTrophy />
+          <span>Leaderboard</span>
+        </NavLink>
+
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          onClick={onClose}
+        >
+          <LuUser />
+          <span>Profile & Badges</span>
+        </NavLink>
+
+        {!isStudent && (
+          <>
+            <span className="sidebar-section-title">Educator</span>
+            <NavLink
+              to="/educator-dashboard"
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              onClick={onClose}
+            >
+              <LuUsers />
+              <span>Class Management</span>
+            </NavLink>
+          </>
+        )}
+      </nav>
+
+      {/* Footer */}
+      <div className="sidebar-footer">
+        <div className="sidebar-avatar">{user?.avatar || '🧑‍🎓'}</div>
+        <div className="sidebar-user-info">
+          <div className="sidebar-user-name">{user?.name}</div>
+          <div className="sidebar-user-role">{user?.role}</div>
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }

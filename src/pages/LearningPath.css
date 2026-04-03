@@ -1,171 +1,86 @@
-/* ===== Learning Path Page ===== */
-.learning-path-page {
-  max-width: 900px;
-  margin: 0 auto;
+/* ═══ Learning Path — AI Study Plan ═══ */
+.learning-path {
+  max-width: 800px; margin: 0 auto;
+  animation: fadeInUp var(--dur-slow) var(--ease-out);
 }
 
-.ai-path-card {
-  margin-bottom: var(--space-10);
+/* AI Card */
+.ai-plan-card {
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: var(--r-xl); padding: var(--s8);
+  box-shadow: var(--card-shadow); margin-bottom: var(--s8);
+  position: relative; overflow: hidden;
+}
+.ai-plan-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--warning));
+}
+.ai-plan-header {
+  display: flex; align-items: center; gap: var(--s3);
+  font-size: 0.95rem; font-weight: 600; color: var(--text);
+  margin-bottom: var(--s4);
+}
+.ai-plan-header svg { color: var(--accent); font-size: 1.2rem; }
+.ai-plan-text { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; white-space: pre-line; }
+
+.regenerate-btn { margin-top: var(--s5); }
+
+/* Focus Areas */
+.focus-section { margin-bottom: var(--s8); }
+.focus-section-title {
+  font-size: 1rem; font-weight: 600; margin-bottom: var(--s5);
+  display: flex; align-items: center; gap: var(--s3);
+}
+.focus-section-title svg { color: var(--accent); }
+
+.focus-list { display: flex; flex-direction: column; gap: var(--s4); }
+.focus-item {
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: var(--r-xl); padding: var(--s6);
+  box-shadow: var(--card-shadow);
+  transition: all var(--dur-base) var(--ease-out);
+}
+.focus-item:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-2px); }
+
+.focus-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--s3);
+}
+.focus-topic { font-weight: 550; font-size: 0.95rem; color: var(--text); }
+.focus-priority {
+  font-size: 0.68rem; font-weight: 600; padding: 3px 10px;
+  border-radius: var(--r-full); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.focus-priority.high { background: rgba(212,100,92,0.08); color: var(--danger); }
+.focus-priority.medium { background: rgba(224,165,70,0.08); color: var(--warning); }
+.focus-priority.low { background: rgba(76,175,130,0.08); color: var(--success); }
+
+.focus-accuracy { font-size: 0.82rem; color: var(--text-muted); margin-bottom: var(--s3); }
+
+.focus-progress { margin-bottom: var(--s4); }
+.focus-progress-label {
+  display: flex; justify-content: space-between; margin-bottom: var(--s2);
+  font-size: 0.75rem; color: var(--text-muted);
 }
 
-.ai-path-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-6);
+/* Resources */
+.focus-resources { display: flex; flex-direction: column; gap: var(--s2); }
+.focus-resource-item {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--bg-subtle); border-radius: var(--r-lg);
+  font-size: 0.82rem; color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--dur-fast) var(--ease-out);
 }
+.focus-resource-item:hover { background: var(--sand-200); color: var(--text); }
+.focus-resource-item svg { font-size: 0.9rem; color: var(--accent); flex-shrink: 0; }
 
-.ai-path-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+/* Loading state */
+.ai-loading {
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--s16) 0; color: var(--text-muted);
+  gap: var(--s4);
 }
-
-.ai-path-title h2 {
-  font-size: 1.2rem;
-}
-
-.spin-icon {
-  animation: spin 1s linear infinite;
-}
-
-.ai-loading-full {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-10);
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.ai-path-content {
-  line-height: 1.8;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.ai-path-content p {
-  margin-bottom: var(--space-2);
-}
-
-.ai-path-bold {
-  font-weight: 700;
-  color: var(--text-primary) !important;
-  font-size: 0.95rem !important;
-}
-
-/* Weak Detail */
-.section-title-small {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 1.15rem;
-  margin-bottom: var(--space-5);
-}
-
-.weak-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: var(--space-5);
-}
-
-.weak-detail-card {
-  padding: var(--space-6);
-}
-
-.weak-detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-4);
-}
-
-.weak-detail-subject {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.weak-detail-header h3 {
-  font-size: 1.1rem;
-  margin-top: var(--space-1);
-}
-
-.weak-detail-accuracy {
-  font-family: var(--font-display);
-  font-size: 1.8rem;
-  font-weight: 800;
-}
-
-.weak-detail-stats {
-  display: flex;
-  gap: var(--space-4);
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-bottom: var(--space-4);
-}
-
-.weak-detail-resources h4 {
-  font-size: 0.85rem;
-  margin-bottom: var(--space-3);
-  color: var(--text-secondary);
-}
-
-.resource-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  transition: all var(--transition-fast);
-}
-
-.resource-link:hover {
-  background: var(--bg-glass);
-  color: var(--primary-300);
-}
-
-.resource-link svg {
-  flex-shrink: 0;
-  font-size: 0.9rem;
-}
-
-/* All Good */
-.all-good-card {
-  text-align: center;
-  padding: var(--space-12) !important;
-}
-
-.all-good-icon {
-  font-size: 4rem;
-  display: block;
-  margin-bottom: var(--space-4);
-}
-
-.all-good-card h3 {
-  font-size: 1.4rem;
-  margin-bottom: var(--space-3);
-}
-
-.all-good-card p {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-  font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-  .weak-detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ai-path-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
-  }
-}
+.ai-loading p { font-size: 0.88rem; }

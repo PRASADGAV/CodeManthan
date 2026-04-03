@@ -18,10 +18,8 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <div className="auth-bg">
-        <div className="auth-orb auth-orb-1"></div>
-        <div className="auth-orb auth-orb-2"></div>
-      </div>
+      <div className="auth-bg-pattern"></div>
+      <div className="auth-bg-glow"></div>
 
       <div className="auth-container">
         <Link to="/" className="auth-logo">
@@ -86,13 +84,13 @@ export default function Login() {
           </div>
 
           <div className="auth-demo">
-            <p className="auth-demo-title">Demo Accounts:</p>
+            <p className="auth-demo-title">Quick Demo Access</p>
             <div className="demo-accounts">
               <button className="demo-btn" onClick={() => { setEmail('alice@demo.com'); setPassword('demo123'); }}>
-                👩‍🎓 Student (Alice)
+                🎓 Student (Alice)
               </button>
               <button className="demo-btn" onClick={() => { setEmail('prof@demo.com'); setPassword('demo123'); }}>
-                🧑‍🏫 Educator (Prof. Smith)
+                🏫 Educator (Prof.)
               </button>
             </div>
           </div>

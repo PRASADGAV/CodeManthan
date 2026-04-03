@@ -12,16 +12,16 @@ const SUBJECT_ICONS = {
 };
 
 const SUBJECT_COLORS = {
-  Mathematics: { bg: 'rgba(99, 102, 241, 0.1)', border: 'rgba(99, 102, 241, 0.2)', color: '#818cf8' },
-  Science: { bg: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7' },
-  'Computer Science': { bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d' },
-  English: { bg: 'rgba(244, 63, 94, 0.1)', border: 'rgba(244, 63, 94, 0.2)', color: '#fda4af' },
+  Mathematics: { bg: 'rgba(212,100,92,0.06)', border: 'rgba(212,100,92,0.15)', color: '#D4645C' },
+  Science: { bg: 'rgba(76,175,130,0.06)', border: 'rgba(76,175,130,0.15)', color: '#4CAF82' },
+  'Computer Science': { bg: 'rgba(224,165,70,0.06)', border: 'rgba(224,165,70,0.15)', color: '#E0A546' },
+  English: { bg: 'rgba(91,143,185,0.06)', border: 'rgba(91,143,185,0.15)', color: '#5B8FB9' },
 };
 
 const DIFFICULTY_INFO = {
-  easy: { label: 'Easy', desc: 'Basic concepts, great for revision', color: '#10b981', xpMult: '1x XP' },
-  medium: { label: 'Medium', desc: 'Standard difficulty, good challenge', color: '#f59e0b', xpMult: '1.2x XP' },
-  hard: { label: 'Hard', desc: 'Advanced problems, maximum challenge', color: '#f43f5e', xpMult: '1.5x XP' },
+  easy: { label: 'Easy', desc: 'Basic concepts, great for revision', color: '#4CAF82', xpMult: '1x XP' },
+  medium: { label: 'Medium', desc: 'Standard difficulty, good challenge', color: '#E0A546', xpMult: '1.2x XP' },
+  hard: { label: 'Hard', desc: 'Advanced problems, maximum challenge', color: '#D4645C', xpMult: '1.5x XP' },
 };
 
 export default function QuizSelect() {

@@ -12,6 +12,7 @@ import EducatorDashboard from './pages/EducatorDashboard';
 import LearningPath from './pages/LearningPath';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
+import PdfQuiz from './pages/PdfQuiz';
 
 function ProtectedRoute({ children, roles }) {
   const { isAuthenticated, user } = useAuth();
@@ -86,6 +87,11 @@ function App() {
         <Route path="/profile" element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/pdf-quiz" element={
+          <ProtectedRoute>
+            <PdfQuiz />
           </ProtectedRoute>
         } />
       </Route>

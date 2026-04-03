@@ -1,61 +1,55 @@
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { LuLogOut, LuZap, LuStar, LuFlame } from 'react-icons/lu';
+import { LuLogOut, LuZap, LuStar, LuFlame, LuMenu } from 'react-icons/lu';
 
-export default function Navbar() {
-  const { user, logout, isStudent } = useAuth();
-  const navigate = useNavigate();
+const PAGE_TITLES = {
+  '/student-dashboard': 'Student Dashboard',
+  '/educator-dashboard': 'Educator Dashboard',
+  '/quiz/select': 'Select Quiz',
+  '/quiz/play': 'Quiz',
+  '/quiz/result': 'Quiz Results',
+  '/learning-path': 'Learning Path',
+  '/leaderboard': 'Leaderboard',
+  '/profile': 'Profile & Badges',
+  '/pdf-quiz': 'PDF Quiz',
+  '/dashboard': 'Dashboard',
+};
+
+export default function Navbar({ onMenuToggle }) {
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const title = PAGE_TITLES[location.pathname] || 'CodeManthan';
+  const isStudent = user?.role === 'student';
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  // Get page title from path
-  const getPageTitle = () => {
-    const path = location.pathname;
-    const titles = {
-      '/student-dashboard': 'Student Dashboard',
-      '/educator-dashboard': 'Educator Dashboard',
-      '/quiz/select': 'Select Quiz',
-      '/quiz/play': 'Quiz in Progress',
-      '/quiz/result': 'Quiz Results',
-      '/learning-path': 'AI Learning Path',
-      '/leaderboard': 'Leaderboard',
-      '/profile': 'Profile & Badges',
-    };
-    return titles[path] || 'CodeManthan';
-  };
-
   return (
-    <header className="navbar" id="main-navbar">
+    <header className="navbar">
       <div className="navbar-left">
-        <h1 className="navbar-title">{getPageTitle()}</h1>
+        <button className="hamburger-btn" onClick={onMenuToggle} id="hamburger-menu-btn">
+          <LuMenu />
+        </button>
+        <h2 className="navbar-title">{title}</h2>
       </div>
 
       <div className="navbar-right">
         {isStudent && (
           <>
-            <div className="navbar-xp" title="Experience Points">
-              <LuZap className="xp-icon" />
-              <span>{user?.xp || 0} XP</span>
+            <div className="navbar-stat" style={{ color: '#fbbf24' }}>
+              <LuZap /> {user?.xp || 0} XP
             </div>
-            <div className="navbar-level" title="Current Level">
-              <LuStar />
-              <span>Lv. {user?.level || 1}</span>
+            <div className="navbar-stat" style={{ color: '#10b981' }}>
+              <LuStar /> Lv. {user?.level || 1}
             </div>
-            {user?.loginStreak > 0 && (
-              <div className="navbar-streak" title="Login Streak">
-                <LuFlame />
-                <span>{user.loginStreak}d</span>
-              </div>
-            )}
           </>
         )}
-        <button onClick={handleLogout} className="logout-btn" id="logout-btn">
-          <LuLogOut />
-          <span>Logout</span>
+        <button className="logout-btn" onClick={handleLogout} id="logout-btn">
+          <LuLogOut /> Logout
         </button>
       </div>
     </header>

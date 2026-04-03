@@ -34,11 +34,12 @@ export default function StudentDashboard() {
   }));
 
   const chartTooltipStyle = {
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px',
-    color: '#f1f5f9',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid rgba(0,0,0,0.08)',
+    borderRadius: '12px',
+    color: '#2E2B27',
     fontSize: '0.8rem',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
   };
 
   if (performance.totalQuizzes === 0) {
@@ -78,28 +79,28 @@ export default function StudentDashboard() {
       {/* Stats Row */}
       <div className="dashboard-stats">
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
+          <div className="stat-icon" style={{ background: 'rgba(212,100,92,0.08)', color: '#D4645C' }}>
             <LuTarget />
           </div>
           <div className="stat-value">{performance.overallAccuracy}%</div>
           <div className="stat-label">Overall Accuracy</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7' }}>
+          <div className="stat-icon" style={{ background: 'rgba(76,175,130,0.08)', color: '#4CAF82' }}>
             <LuTrophy />
           </div>
           <div className="stat-value">{performance.totalQuizzes}</div>
           <div className="stat-label">Quizzes Completed</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#fcd34d' }}>
+          <div className="stat-icon" style={{ background: 'rgba(224,165,70,0.08)', color: '#E0A546' }}>
             <LuZap />
           </div>
           <div className="stat-value">{user?.xp || 0}</div>
           <div className="stat-label">Total XP</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#fda4af' }}>
+          <div className="stat-icon" style={{ background: 'rgba(212,100,92,0.06)', color: '#D4645C' }}>
             <LuFlame />
           </div>
           <div className="stat-value">{performance.totalCorrect}/{performance.totalQuestions}</div>
@@ -117,17 +118,17 @@ export default function StudentDashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="quiz" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} domain={[0, 100]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="quiz" stroke="#B5AFA4" fontSize={12} />
+                <YAxis stroke="#B5AFA4" fontSize={12} domain={[0, 100]} />
                 <Tooltip contentStyle={chartTooltipStyle} />
                 <Line
                   type="monotone"
                   dataKey="accuracy"
-                  stroke="#818cf8"
-                  strokeWidth={3}
-                  dot={{ fill: '#818cf8', r: 5 }}
-                  activeDot={{ r: 7, fill: '#6366f1' }}
+                  stroke="#D4645C"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#D4645C', r: 4 }}
+                  activeDot={{ r: 6, fill: '#B04A43' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -143,10 +144,10 @@ export default function StudentDashboard() {
             <div className="chart-container">
               <ResponsiveContainer width="100%" height={250}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                  <PolarAngleAxis dataKey="topic" stroke="#64748b" fontSize={11} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="rgba(255,255,255,0.05)" fontSize={10} />
-                  <Radar dataKey="accuracy" stroke="#818cf8" fill="#818cf8" fillOpacity={0.2} strokeWidth={2} />
+                  <PolarGrid stroke="rgba(0,0,0,0.06)" />
+                  <PolarAngleAxis dataKey="topic" stroke="#B5AFA4" fontSize={11} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="rgba(0,0,0,0.04)" fontSize={10} />
+                  <Radar dataKey="accuracy" stroke="#D4645C" fill="#D4645C" fillOpacity={0.12} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -161,12 +162,12 @@ export default function StudentDashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={difficultyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="difficulty" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="difficulty" stroke="#B5AFA4" fontSize={12} />
+                <YAxis stroke="#B5AFA4" fontSize={12} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="correct" fill="#10b981" radius={[4, 4, 0, 0]} name="Correct" />
-                <Bar dataKey="total" fill="rgba(255,255,255,0.1)" radius={[4, 4, 0, 0]} name="Total" />
+                <Bar dataKey="correct" fill="#4CAF82" radius={[4, 4, 0, 0]} name="Correct" />
+                <Bar dataKey="total" fill="rgba(0,0,0,0.06)" radius={[4, 4, 0, 0]} name="Total" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -177,11 +178,11 @@ export default function StudentDashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={subjectData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis type="number" domain={[0, 100]} stroke="#64748b" fontSize={12} />
-                <YAxis dataKey="subject" type="category" stroke="#64748b" fontSize={12} width={80} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis type="number" domain={[0, 100]} stroke="#B5AFA4" fontSize={12} />
+                <YAxis dataKey="subject" type="category" stroke="#B5AFA4" fontSize={12} width={80} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="accuracy" fill="#818cf8" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="accuracy" fill="#D4645C" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -193,7 +194,7 @@ export default function StudentDashboard() {
         {/* Weak Areas */}
         <div className="glass-card weak-areas-card">
           <h3 className="card-title">
-            <LuTriangleAlert style={{ color: '#f59e0b' }} /> Weak Areas
+            <LuTriangleAlert style={{ color: '#E0A546' }} /> Weak Areas
           </h3>
           {performance.weakAreas.length > 0 ? (
             <div className="weak-areas-list">
@@ -208,7 +209,7 @@ export default function StudentDashboard() {
                       className="progress-fill"
                       style={{
                         width: `${area.accuracy}%`,
-                        background: area.accuracy < 40 ? 'var(--gradient-danger)' : 'var(--gradient-warm)',
+                        background: area.accuracy < 40 ? 'var(--danger)' : 'linear-gradient(90deg, var(--accent), var(--accent-light))',
                       }}
                     ></div>
                   </div>
@@ -218,7 +219,7 @@ export default function StudentDashboard() {
           ) : (
             <p className="no-weak-areas">🎉 No weak areas detected! Keep it up!</p>
           )}
-          <Link to="/learning-path" className="btn btn-secondary btn-sm" style={{ marginTop: 'var(--space-4)' }}>
+          <Link to="/learning-path" className="btn btn-secondary btn-sm" style={{ marginTop: 'var(--s4)' }}>
             <LuRoute /> View AI Learning Path
           </Link>
         </div>

@@ -81,7 +81,7 @@ export default function QuizPlay() {
 
   const difficultyColors = {
     easy: '#10b981',
-    medium: '#f59e0b',
+    medium: '#E0A546',
     hard: '#f43f5e',
   };
 
@@ -100,7 +100,7 @@ export default function QuizPlay() {
               <span>{formatTime(timer)}</span>
             </div>
             <div className="quiz-stat-item" title="Streak">
-              <LuFlame style={{ color: streak > 0 ? '#f59e0b' : undefined }} />
+              <LuFlame style={{ color: streak > 0 ? '#E0A546' : undefined }} />
               <span>{streak}</span>
             </div>
             <div className="quiz-stat-item" title="Difficulty" style={{ color: difficultyColors[currentDifficulty] }}>

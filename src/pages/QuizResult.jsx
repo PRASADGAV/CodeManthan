@@ -42,7 +42,7 @@ export default function QuizResult() {
     if (accuracy === 100) return { grade: 'S', color: '#fbbf24', label: 'Perfect!' };
     if (accuracy >= 80) return { grade: 'A', color: '#10b981', label: 'Excellent!' };
     if (accuracy >= 60) return { grade: 'B', color: '#3b82f6', label: 'Good job!' };
-    if (accuracy >= 40) return { grade: 'C', color: '#f59e0b', label: 'Keep trying!' };
+    if (accuracy >= 40) return { grade: 'C', color: '#E0A546', label: 'Keep trying!' };
     return { grade: 'D', color: '#f43f5e', label: 'Needs work' };
   };
 
@@ -99,12 +99,12 @@ export default function QuizResult() {
           <div className="result-stat-label">Time</div>
         </div>
         <div className="result-stat-card">
-          <LuFlame className="result-stat-icon" style={{ color: '#f59e0b' }} />
+          <LuFlame className="result-stat-icon" style={{ color: '#E0A546' }} />
           <div className="result-stat-value">{maxStreak}</div>
           <div className="result-stat-label">Max Streak</div>
         </div>
         <div className="result-stat-card highlight">
-          <LuZap className="result-stat-icon" style={{ color: '#818cf8' }} />
+          <LuZap className="result-stat-icon" style={{ color: '#D4645C' }} />
           <div className="result-stat-value">+{xpEarned}</div>
           <div className="result-stat-label">XP Earned</div>
         </div>

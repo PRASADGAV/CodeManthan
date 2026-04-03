@@ -53,18 +53,19 @@ export default function EducatorDashboard() {
   }, [students]);
 
   const getHeatmapColor = (accuracy) => {
-    if (accuracy >= 80) return { bg: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7' };
-    if (accuracy >= 60) return { bg: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd' };
-    if (accuracy >= 40) return { bg: 'rgba(245, 158, 11, 0.15)', color: '#fcd34d' };
-    return { bg: 'rgba(244, 63, 94, 0.15)', color: '#fda4af' };
+    if (accuracy >= 80) return { bg: 'rgba(76,175,130,0.1)', color: '#4CAF82' };
+    if (accuracy >= 60) return { bg: 'rgba(91,143,185,0.1)', color: '#5B8FB9' };
+    if (accuracy >= 40) return { bg: 'rgba(224,165,70,0.1)', color: '#E0A546' };
+    return { bg: 'rgba(212,100,92,0.1)', color: '#D4645C' };
   };
 
   const chartTooltipStyle = {
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px',
-    color: '#f1f5f9',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid rgba(0,0,0,0.08)',
+    borderRadius: '12px',
+    color: '#2E2B27',
     fontSize: '0.8rem',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
   };
 
   // Per-student bar chart data
@@ -86,21 +87,21 @@ export default function EducatorDashboard() {
       {/* Stats */}
       <div className="educator-stats">
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
+          <div className="stat-icon" style={{ background: 'rgba(212,100,92,0.08)', color: '#D4645C' }}>
             <LuUsers />
           </div>
           <div className="stat-value">{classData.totalStudents}</div>
           <div className="stat-label">Total Students</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7' }}>
+          <div className="stat-icon" style={{ background: 'rgba(76,175,130,0.08)', color: '#4CAF82' }}>
             <LuTarget />
           </div>
           <div className="stat-value">{classData.avgAccuracy}%</div>
           <div className="stat-label">Average Accuracy</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#fcd34d' }}>
+          <div className="stat-icon" style={{ background: 'rgba(224,165,70,0.08)', color: '#E0A546' }}>
             <LuTrendingUp />
           </div>
           <div className="stat-value">{classData.totalQuizzes}</div>
@@ -109,11 +110,11 @@ export default function EducatorDashboard() {
       </div>
 
       {/* Class-wide Heatmap */}
-      <div className="chart-card" style={{ marginBottom: 'var(--space-8)' }}>
+      <div className="chart-card" style={{ marginBottom: 'var(--s8)' }}>
         <h3 className="chart-title">
-          <LuTriangleAlert style={{ color: '#f59e0b' }} /> Class-Wide Weak Areas Heatmap
+          <LuTriangleAlert style={{ color: '#E0A546' }} /> Class-Wide Weak Areas Heatmap
         </h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 'var(--space-4)' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 'var(--s4)' }}>
           Color intensity shows average class accuracy per topic. Red = weak, Green = strong.
         </p>
         {classData.heatmapData.length > 0 ? (
@@ -133,7 +134,7 @@ export default function EducatorDashboard() {
             })}
           </div>
         ) : (
-          <p style={{ color: 'var(--text-muted)', padding: 'var(--space-6) 0', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', padding: 'var(--s6) 0', textAlign: 'center' }}>
             No data yet. Students need to take quizzes first.
           </p>
         )}
@@ -141,16 +142,16 @@ export default function EducatorDashboard() {
 
       {/* Per-Student Performance Chart */}
       {studentChartData.length > 0 && (
-        <div className="chart-card" style={{ marginBottom: 'var(--space-8)' }}>
+        <div className="chart-card" style={{ marginBottom: 'var(--s8)' }}>
           <h3 className="chart-title">Student Performance Comparison</h3>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={studentChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} domain={[0, 100]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                <XAxis dataKey="name" stroke="#B5AFA4" fontSize={12} />
+                <YAxis stroke="#B5AFA4" fontSize={12} domain={[0, 100]} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="accuracy" fill="#818cf8" radius={[4, 4, 0, 0]} name="Accuracy %" />
+                <Bar dataKey="accuracy" fill="#D4645C" radius={[4, 4, 0, 0]} name="Accuracy %" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -178,7 +179,7 @@ export default function EducatorDashboard() {
                   <span><LuTrendingUp /> {student.performance.totalQuizzes} quizzes</span>
                   <span><LuZap /> {student.xp || 0} XP</span>
                   {student.performance.weakAreas.length > 0 && (
-                    <span style={{ color: 'var(--warning-400)' }}>
+                    <span style={{ color: 'var(--warning)' }}>
                       <LuTriangleAlert /> {student.performance.weakAreas.length} weak areas
                     </span>
                   )}
@@ -187,7 +188,7 @@ export default function EducatorDashboard() {
             ))}
           </div>
         ) : (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-8)' }}>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--s8)' }}>
             No students found in this class.
           </p>
         )}

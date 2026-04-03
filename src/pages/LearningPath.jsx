@@ -81,7 +81,7 @@ export default function LearningPath() {
       {weakAreas.length > 0 && (
         <div className="weak-detail-section">
           <h2 className="section-title-small">
-            <LuTarget style={{ color: '#f59e0b' }} /> Focus Areas
+            <LuTarget style={{ color: '#E0A546' }} /> Focus Areas
           </h2>
           <div className="weak-detail-grid">
             {weakAreas.map((area, idx) => {
@@ -94,13 +94,13 @@ export default function LearningPath() {
                       <h3>{area.topic}</h3>
                     </div>
                     <div className="weak-detail-accuracy" style={{
-                      color: area.accuracy < 40 ? '#f43f5e' : area.accuracy < 60 ? '#f59e0b' : '#3b82f6'
+                      color: area.accuracy < 40 ? '#f43f5e' : area.accuracy < 60 ? '#E0A546' : '#3b82f6'
                     }}>
                       {area.accuracy}%
                     </div>
                   </div>
 
-                  <div className="progress-bar" style={{ marginBottom: 'var(--space-4)' }}>
+                  <div className="progress-bar" style={{ marginBottom: 'var(--s4)' }}>
                     <div className="progress-fill" style={{
                       width: `${area.accuracy}%`,
                       background: area.accuracy < 40 ? 'var(--gradient-danger)' : 'var(--gradient-warm)',
