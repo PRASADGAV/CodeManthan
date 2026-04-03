@@ -1,28 +1,50 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPerformanceData, getQuizHistory } from '../services/storageService';
 import { getAdaptiveLearningPath, identifyWeakAreas } from '../services/aiService';
 import { resourceBank } from '../data/quizData';
-import { LuRoute, LuSparkles, LuTarget, LuBookOpen, LuExternalLink, LuRefreshCw, LuArrowRight } from 'react-icons/lu';
+import { LuRoute, LuSparkles, LuTarget, LuBookOpen, LuExternalLink, LuRefreshCw, LuArrowRight, LuLoader } from 'react-icons/lu';
 import './LearningPath.css';
 
 export default function LearningPath() {
   const { user } = useAuth();
   const [aiPath, setAiPath] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const performance = useMemo(() => getPerformanceData(user?.id), [user?.id]);
-  const history = useMemo(() => getQuizHistory(user?.id), [user?.id]);
+  const [performance, setPerformance] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [weakAreas, setWeakAreas] = useState([]);
 
-  const weakAreas = useMemo(() => {
-    return identifyWeakAreas(history);
-  }, [history]);
-
-  // Generate AI learning path on load
   useEffect(() => {
-    generatePath();
-  }, []);
+    async function loadDataAndGenerate() {
+      if (!user?.id) return;
+      try {
+        const [perf, hist] = await Promise.all([
+          getPerformanceData(user.id),
+          getQuizHistory(user.id),
+        ]);
+        
+        setPerformance(perf);
+        setHistory(hist);
+        
+        const weak = identifyWeakAreas(hist);
+        setWeakAreas(weak);
+
+        // Auto-generate AI learning path
+        setLoading(true);
+        const path = await getAdaptiveLearningPath(weak, hist, user.level || 1);
+        setAiPath(path);
+      } catch (err) {
+        console.error("Failed to load learning path data", err);
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    }
+    loadDataAndGenerate();
+  }, [user?.id, user?.level]);
 
   const generatePath = async () => {
     setLoading(true);
@@ -35,6 +57,14 @@ export default function LearningPath() {
   const getResourcesForTopic = (subject, topic) => {
     return resourceBank[subject]?.[topic] || [];
   };
+
+  if (initialLoading) {
+     return (
+      <div className="learning-path-page animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="learning-path-page animate-fadeIn">
@@ -57,13 +87,13 @@ export default function LearningPath() {
           </div>
           <button className="btn btn-secondary btn-sm" onClick={generatePath} disabled={loading}>
             <LuRefreshCw className={loading ? 'spin-icon' : ''} />
-            {loading ? 'Generating...' : 'Regenerate'}
+            {loading && !!aiPath ? 'Generating...' : 'Regenerate'}
           </button>
         </div>
         
-        {loading ? (
+        {loading && !aiPath ? (
           <div className="ai-loading-full">
-            <div className="spinner"></div>
+             <LuLoader className="pq-spin" style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--accent)' }} />
             <p>Analyzing your performance and generating a personalized study plan...</p>
           </div>
         ) : (

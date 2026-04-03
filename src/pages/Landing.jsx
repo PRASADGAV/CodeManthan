@@ -10,7 +10,7 @@ export default function Landing() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authTab, setAuthTab] = useState('login');
   const [selectedRole, setSelectedRole] = useState(null);
-  const { login, register } = useAuth();
+  const { login, register, error } = useAuth();
 
   const openAuthModal = (tab) => {
     setAuthTab(tab);
@@ -282,16 +282,16 @@ export default function Landing() {
                 <button className="back-role-btn" onClick={() => setSelectedRole(null)}>
                   ← Back to role selection
                 </button>
+                {error && <div className="auth-error" style={{ color: '#ff6b6b', background: 'rgba(255, 107, 107, 0.1)', padding: '10px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center', fontSize: '0.9rem' }}>{error}</div>}
                 {authTab === 'login' ? (
-                  <form className="auth-form" onSubmit={(e) => { 
+                  <form className="auth-form" onSubmit={async (e) => { 
                     e.preventDefault(); 
                     const form = e.target;
                     const email = form.email.value;
                     const password = form.password.value;
-                    const success = login(email, password);
+                    const success = await login(email, password);
                     if (success) {
                       closeAuthModal();
-                      window.location.href = '/dashboard';
                     }
                   }}>
                     <div className="form-group">
@@ -307,7 +307,7 @@ export default function Landing() {
                     </button>
                   </form>
                 ) : (
-                  <form className="auth-form" onSubmit={(e) => { 
+                  <form className="auth-form" onSubmit={async (e) => { 
                     e.preventDefault(); 
                     const form = e.target;
                     const userData = {
@@ -316,10 +316,9 @@ export default function Landing() {
                       password: form.password.value,
                       role: selectedRole,
                     };
-                    const success = register(userData);
+                    const success = await register(userData);
                     if (success) {
                       closeAuthModal();
-                      window.location.href = '/dashboard';
                     }
                   }}>
                     <div className="form-group">

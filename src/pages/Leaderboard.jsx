@@ -1,15 +1,29 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getLeaderboard } from '../services/storageService';
-import { LuTrophy, LuMedal, LuTarget, LuZap, LuFlame } from 'react-icons/lu';
+import { LuTrophy, LuMedal, LuTarget, LuZap, LuFlame, LuLoader } from 'react-icons/lu';
 import './Leaderboard.css';
 
 export default function Leaderboard() {
   const { user } = useAuth();
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const leaderboardData = useMemo(() => {
-    const classCode = user?.classCode || 'global';
-    return getLeaderboard(classCode);
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      try {
+        const classCode = user?.classCode || 'global';
+        const data = await getLeaderboard(classCode);
+        setLeaderboardData(data || []);
+      } catch (err) {
+        console.error("Failed to load leaderboard", err);
+        setLeaderboardData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLeaderboard();
   }, [user]);
 
   const getMedalIcon = (rank) => {
@@ -18,6 +32,14 @@ export default function Leaderboard() {
     if (rank === 2) return <span className="medal bronze">🥉</span>;
     return <span className="rank-number">{rank + 1}</span>;
   };
+
+  if (loading) {
+     return (
+      <div className="leaderboard-page animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="leaderboard-page animate-fadeIn">

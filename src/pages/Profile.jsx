@@ -1,19 +1,49 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserBadges, getPerformanceData } from '../services/storageService';
 import { badgeDefinitions } from '../data/quizData';
-import { LuUser, LuZap, LuStar, LuTrophy, LuTarget, LuFlame, LuCalendar } from 'react-icons/lu';
+import { LuUser, LuZap, LuStar, LuTrophy, LuTarget, LuFlame, LuCalendar, LuLoader } from 'react-icons/lu';
 import './Profile.css';
 
 export default function Profile() {
   const { user } = useAuth();
 
-  const earnedBadgeIds = useMemo(() => getUserBadges(user?.id), [user?.id]);
-  const performance = useMemo(() => getPerformanceData(user?.id), [user?.id]);
+  const [earnedBadgeIds, setEarnedBadgeIds] = useState([]);
+  const [performance, setPerformance] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!user?.id) return;
+      try {
+        const [badges, perf] = await Promise.all([
+          getUserBadges(user.id),
+          getPerformanceData(user.id)
+        ]);
+        setEarnedBadgeIds(badges || []);
+        setPerformance(perf);
+      } catch (error) {
+        console.error("Failed to fetch profile data", error);
+        setEarnedBadgeIds([]);
+        setPerformance({ overallAccuracy: 0, totalQuizzes: 0 });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [user?.id]);
 
   const xpForNextLevel = 250;
   const currentLevelXP = (user?.xp || 0) % xpForNextLevel;
   const xpProgress = (currentLevelXP / xpForNextLevel) * 100;
+
+  if (loading || !performance) {
+    return (
+      <div className="profile-page animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page animate-fadeIn">

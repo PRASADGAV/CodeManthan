@@ -1,56 +1,81 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getClassStudents, getStudentPerformance, getAllUsers } from '../services/storageService';
-import { LuUsers, LuTarget, LuTrendingUp, LuTriangleAlert, LuZap } from 'react-icons/lu';
+import { LuUsers, LuTarget, LuTrendingUp, LuTriangleAlert, LuZap, LuLoader } from 'react-icons/lu';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
 export default function EducatorDashboard() {
   const { user } = useAuth();
+  
+  const [students, setStudents] = useState([]);
+  const [classData, setClassData] = useState({
+    students: [],
+    totalStudents: 0,
+    avgAccuracy: 0,
+    totalQuizzes: 0,
+    heatmapData: [],
+  });
+  const [loading, setLoading] = useState(true);
 
-  const students = useMemo(() => {
-    if (!user?.classCode) return getAllUsers().filter(u => u.role === 'student');
-    return getClassStudents(user.classCode);
-  }, [user]);
-
-  const classData = useMemo(() => {
-    const topicHeatmap = {};
-    let totalAccuracy = 0;
-    let totalQuizzes = 0;
-
-    const studentDetails = students.map(student => {
-      const perf = getStudentPerformance(student.id);
-      totalAccuracy += perf.overallAccuracy;
-      totalQuizzes += perf.totalQuizzes;
-
-      // Aggregate topic performance
-      (perf.topicPerformance || []).forEach(tp => {
-        if (!topicHeatmap[tp.topic]) {
-          topicHeatmap[tp.topic] = { totalAccuracy: 0, count: 0 };
+  useEffect(() => {
+    async function loadData() {
+      try {
+        let fetchedStudents = [];
+        if (!user?.classCode) {
+           const allUsers = await getAllUsers();
+           fetchedStudents = allUsers.filter(u => u.role === 'student');
+        } else {
+           fetchedStudents = await getClassStudents(user.classCode);
         }
-        topicHeatmap[tp.topic].totalAccuracy += tp.accuracy;
-        topicHeatmap[tp.topic].count += 1;
-      });
+        
+        setStudents(fetchedStudents);
 
-      return {
-        ...student,
-        performance: perf,
-      };
-    });
+        const topicHeatmap = {};
+        let totalAccuracy = 0;
+        let totalQuizzes = 0;
 
-    const heatmapData = Object.entries(topicHeatmap).map(([topic, data]) => ({
-      topic: topic.split(' > ').pop() || topic,
-      avgAccuracy: Math.round(data.totalAccuracy / data.count),
-    }));
+        const studentDetails = await Promise.all(fetchedStudents.map(async (student) => {
+          const perf = await getStudentPerformance(student.id);
+          totalAccuracy += perf.overallAccuracy;
+          totalQuizzes += perf.totalQuizzes;
 
-    return {
-      students: studentDetails,
-      totalStudents: students.length,
-      avgAccuracy: students.length > 0 ? Math.round(totalAccuracy / students.length) : 0,
-      totalQuizzes,
-      heatmapData,
-    };
-  }, [students]);
+          // Aggregate topic performance
+          (perf.topicPerformance || []).forEach(tp => {
+            if (!topicHeatmap[tp.topic]) {
+              topicHeatmap[tp.topic] = { totalAccuracy: 0, count: 0 };
+            }
+            topicHeatmap[tp.topic].totalAccuracy += tp.accuracy;
+            topicHeatmap[tp.topic].count += 1;
+          });
+
+          return {
+            ...student,
+            performance: perf,
+          };
+        }));
+
+        const heatmapData = Object.entries(topicHeatmap).map(([topic, data]) => ({
+          topic: topic.split(' > ').pop() || topic,
+          avgAccuracy: Math.round(data.totalAccuracy / data.count),
+        }));
+
+        setClassData({
+          students: studentDetails,
+          totalStudents: fetchedStudents.length,
+          avgAccuracy: fetchedStudents.length > 0 ? Math.round(totalAccuracy / fetchedStudents.length) : 0,
+          totalQuizzes,
+          heatmapData,
+        });
+
+      } catch (err) {
+         console.error("Failed to load educator data", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [user]);
 
   const getHeatmapColor = (accuracy) => {
     if (accuracy >= 80) return { bg: 'rgba(76,175,130,0.1)', color: '#4CAF82' };
@@ -74,6 +99,14 @@ export default function EducatorDashboard() {
     accuracy: s.performance.overallAccuracy,
     quizzes: s.performance.totalQuizzes,
   }));
+
+  if (loading) {
+    return (
+      <div className="dashboard animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard animate-fadeIn">

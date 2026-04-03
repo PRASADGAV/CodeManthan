@@ -2,8 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
 import QuizSelect from './pages/QuizSelect';
 import QuizPlay from './pages/QuizPlay';
 import QuizResult from './pages/QuizResult';
@@ -17,8 +15,9 @@ import PdfQuiz from './pages/PdfQuiz';
 function ProtectedRoute({ children, roles }) {
   const { isAuthenticated, user } = useAuth();
   
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user?.role)) return <Navigate to="/" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
+  const userRole = user?.role || 'student';
+  if (roles && !roles.includes(userRole)) return <Navigate to="/" replace />;
   
   return children;
 }
@@ -39,8 +38,6 @@ function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
 
       {/* Protected routes with layout */}
       <Route element={<Layout />}>

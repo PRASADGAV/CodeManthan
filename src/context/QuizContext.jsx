@@ -30,6 +30,7 @@ export function QuizProvider({ children }) {
   const [questionStartTime, setQuestionStartTime] = useState(null);
   const [newBadges, setNewBadges] = useState([]);
   const [showBadgePopup, setShowBadgePopup] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   // Start a new quiz
   const startQuiz = useCallback((subject, topic, difficulty = 'medium', numQuestions = 5) => {
@@ -69,9 +70,99 @@ export function QuizProvider({ children }) {
     return true;
   }, []);
 
+  // Check and award badges
+  const checkBadges = useCallback(async (result) => {
+    if (!user) return;
+
+    try {
+      const [history, existingBadges] = await Promise.all([
+        getQuizHistory(user.id),
+        getUserBadges(user.id)
+      ]);
+
+      const stats = {
+        totalQuizzes: history.length,
+        perfectScores: history.filter(q => q.correctAnswers === q.totalQuestions).length,
+        maxStreak: result.maxStreak || 0,
+        subjectsAttempted: new Set(history.map(q => q.subject)).size,
+        fastAnswers: result.answers ? result.answers.filter(a => a.correct && a.timeTaken < 10).length : 0,
+        totalXP: (user.xp || 0) + result.xpEarned,
+        hardQuizHighScore: result.difficulty === 'hard' ? result.accuracy : 0,
+        loginStreak: user.loginStreak || 0,
+      };
+
+      const earned = [];
+      for (const badge of badgeDefinitions) {
+        if (!existingBadges.includes(badge.id) && badge.condition(stats)) {
+          await awardBadge(user.id, badge.id);
+          await addXP(user.id, badge.xpReward);
+          earned.push(badge);
+        }
+      }
+
+      if (earned.length > 0) {
+        setNewBadges(earned);
+        setShowBadgePopup(true);
+      }
+    } catch(err) {
+      console.error("Failed to check badges", err);
+    }
+  }, [user]);
+
+  // Finish quiz and calculate results
+  const finishQuiz = useCallback(async (finalAnswers) => {
+    if (!currentQuiz || !user || isFinishing) return;
+    
+    setIsFinishing(true);
+    
+    try {
+      const correctCount = finalAnswers.filter(a => a.correct).length;
+      const totalQuestions = currentQuiz.questions.length;
+      const accuracy = Math.round((correctCount / totalQuestions) * 100);
+      const totalTime = finalAnswers.reduce((sum, a) => sum + a.timeTaken, 0);
+
+      // Calculate XP
+      let xpEarned = correctCount * 10; // Base XP
+      if (accuracy === 100) xpEarned += 50; // Perfect bonus
+      if (currentQuiz.difficulty === 'hard') xpEarned *= 1.5;
+      else if (currentQuiz.difficulty === 'medium') xpEarned *= 1.2;
+      xpEarned = Math.round(xpEarned);
+
+      const result = {
+        subject: currentQuiz.subject,
+        topic: currentQuiz.topic,
+        difficulty: currentQuiz.difficulty,
+        totalQuestions,
+        correctAnswers: correctCount,
+        accuracy,
+        timeTaken: Math.round(totalTime),
+        xpEarned,
+        answers: finalAnswers,
+        maxStreak: maxStreak > streak ? maxStreak : (finalAnswers[finalAnswers.length - 1]?.correct ? streak + 1 : streak),
+      };
+
+      // Save to storage
+      await saveQuizResult(user.id, result);
+      await addXP(user.id, xpEarned);
+
+      // Check for new badges
+      await checkBadges(result);
+
+      // Update user context
+      updateUser({ xp: (user.xp || 0) + xpEarned, level: Math.floor(((user.xp || 0) + xpEarned) / 250) + 1 });
+
+      setQuizResult(result);
+      setQuizComplete(true);
+    } catch(err) {
+       console.error("Failed to finish quiz and save data", err);
+    } finally {
+       setIsFinishing(false);
+    }
+  }, [currentQuiz, user, maxStreak, streak, updateUser, checkBadges, isFinishing]);
+
   // Answer a question
   const answerQuestion = useCallback((selectedOption) => {
-    if (!currentQuiz) return;
+    if (!currentQuiz || isFinishing) return;
 
     const question = currentQuiz.questions[currentQuestionIndex];
     const isCorrect = selectedOption === question.correct;
@@ -113,84 +204,7 @@ export function QuizProvider({ children }) {
       setCurrentQuestionIndex(prev => prev + 1);
       setQuestionStartTime(Date.now());
     }
-  }, [currentQuiz, currentQuestionIndex, answers, questionStartTime, streak, maxStreak, currentDifficulty]);
-
-  // Finish quiz and calculate results
-  const finishQuiz = useCallback((finalAnswers) => {
-    if (!currentQuiz || !user) return;
-
-    const correctCount = finalAnswers.filter(a => a.correct).length;
-    const totalQuestions = currentQuiz.questions.length;
-    const accuracy = Math.round((correctCount / totalQuestions) * 100);
-    const totalTime = finalAnswers.reduce((sum, a) => sum + a.timeTaken, 0);
-
-    // Calculate XP
-    let xpEarned = correctCount * 10; // Base XP
-    if (accuracy === 100) xpEarned += 50; // Perfect bonus
-    if (currentQuiz.difficulty === 'hard') xpEarned *= 1.5;
-    else if (currentQuiz.difficulty === 'medium') xpEarned *= 1.2;
-    xpEarned = Math.round(xpEarned);
-
-    const result = {
-      subject: currentQuiz.subject,
-      topic: currentQuiz.topic,
-      difficulty: currentQuiz.difficulty,
-      totalQuestions,
-      correctAnswers: correctCount,
-      accuracy,
-      timeTaken: Math.round(totalTime),
-      xpEarned,
-      answers: finalAnswers,
-      maxStreak: maxStreak > streak ? maxStreak : (finalAnswers[finalAnswers.length - 1]?.correct ? streak + 1 : streak),
-    };
-
-    // Save to storage
-    saveQuizResult(user.id, result);
-    addXP(user.id, xpEarned);
-
-    // Check for new badges
-    checkBadges(result);
-
-    // Update user context
-    updateUser({ xp: (user.xp || 0) + xpEarned, level: Math.floor(((user.xp || 0) + xpEarned) / 250) + 1 });
-
-    setQuizResult(result);
-    setQuizComplete(true);
-  }, [currentQuiz, user, maxStreak, streak, updateUser]);
-
-  // Check and award badges
-  const checkBadges = useCallback((result) => {
-    if (!user) return;
-
-    const history = getQuizHistory(user.id);
-    const performance = getPerformanceData(user.id);
-    const existingBadges = getUserBadges(user.id);
-
-    const stats = {
-      totalQuizzes: history.length,
-      perfectScores: history.filter(q => q.correctAnswers === q.totalQuestions).length,
-      maxStreak: result.maxStreak || 0,
-      subjectsAttempted: new Set(history.map(q => q.subject)).size,
-      fastAnswers: result.answers ? result.answers.filter(a => a.correct && a.timeTaken < 10).length : 0,
-      totalXP: (user.xp || 0) + result.xpEarned,
-      hardQuizHighScore: result.difficulty === 'hard' ? result.accuracy : 0,
-      loginStreak: user.loginStreak || 0,
-    };
-
-    const earned = [];
-    badgeDefinitions.forEach(badge => {
-      if (!existingBadges.includes(badge.id) && badge.condition(stats)) {
-        awardBadge(user.id, badge.id);
-        addXP(user.id, badge.xpReward);
-        earned.push(badge);
-      }
-    });
-
-    if (earned.length > 0) {
-      setNewBadges(earned);
-      setShowBadgePopup(true);
-    }
-  }, [user]);
+  }, [currentQuiz, currentQuestionIndex, answers, questionStartTime, streak, maxStreak, currentDifficulty, finishQuiz, isFinishing]);
 
   // Reset quiz
   const resetQuiz = useCallback(() => {
@@ -230,6 +244,7 @@ export function QuizProvider({ children }) {
     newBadges,
     showBadgePopup,
     progress: currentQuiz ? ((currentQuestionIndex) / currentQuiz.questions.length) * 100 : 0,
+    isFinishing,
     
     // Actions
     startQuiz,

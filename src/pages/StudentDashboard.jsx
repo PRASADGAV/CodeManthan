@@ -1,16 +1,50 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPerformanceData, getQuizHistory } from '../services/storageService';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTrendingUp, LuTriangleAlert, LuArrowRight, LuRoute } from 'react-icons/lu';
+import { LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTrendingUp, LuTriangleAlert, LuArrowRight, LuRoute, LuLoader } from 'react-icons/lu';
 import './Dashboard.css';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const [performance, setPerformance] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const performance = useMemo(() => getPerformanceData(user?.id), [user?.id]);
-  const history = useMemo(() => getQuizHistory(user?.id), [user?.id]);
+  useEffect(() => {
+    async function fetchData() {
+      if (!user?.id) return;
+      try {
+        const [perf, hist] = await Promise.all([
+          getPerformanceData(user.id),
+          getQuizHistory(user.id),
+        ]);
+        setPerformance(perf);
+        setHistory(hist);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+        setPerformance({
+          totalQuizzes: 0, totalQuestions: 0, totalCorrect: 0,
+          overallAccuracy: 0, topicAccuracy: {}, subjectAccuracy: {},
+          difficultyBreakdown: { easy: { correct: 0, total: 0 }, medium: { correct: 0, total: 0 }, hard: { correct: 0, total: 0 } },
+          recentTrend: [], weakAreas: [], strongAreas: [], topicPerformance: [],
+        });
+        setHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [user?.id]);
+
+  if (loading || !performance) {
+    return (
+      <div className="dashboard animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      </div>
+    );
+  }
 
   // Chart data
   const trendData = performance.recentTrend;

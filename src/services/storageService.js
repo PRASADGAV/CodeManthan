@@ -1,143 +1,64 @@
-// Utility functions for local storage operations
-// This replaces Firebase for now - can be swapped later
+/**
+ * Storage Service — Firebase Realtime Database
+ * All CRUD operations for user data, quiz history, leaderboard, badges, etc.
+ */
+import { db } from '../firebase';
+import {
+  ref, set, get, push, update, child, remove,
+} from 'firebase/database';
 
-const STORAGE_KEYS = {
-  USERS: 'codemanthan_users',
-  CURRENT_USER: 'codemanthan_current_user',
-  QUIZ_HISTORY: 'codemanthan_quiz_history',
-  PERFORMANCE: 'codemanthan_performance',
-  BADGES: 'codemanthan_badges',
-  LEADERBOARD: 'codemanthan_leaderboard',
-  EDUCATORS: 'codemanthan_educators',
-  CUSTOM_QUIZZES: 'codemanthan_custom_quizzes',
-};
+// ===== User Profile =====
 
-// ===== Generic Storage Helpers =====
-function getItem(key) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
-  } catch {
-    return null;
-  }
+export async function getUserProfile(uid) {
+  const snap = await get(ref(db, `users/${uid}`));
+  return snap.exists() ? { id: uid, ...snap.val() } : null;
 }
 
-function setItem(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch {
-    return false;
-  }
+export async function saveUserProfile(uid, data) {
+  await set(ref(db, `users/${uid}`), data);
 }
 
-// ===== User Management =====
-export function getAllUsers() {
-  return getItem(STORAGE_KEYS.USERS) || [];
+export async function updateUserProfile(uid, updates) {
+  await update(ref(db, `users/${uid}`), updates);
 }
 
-export function getCurrentUser() {
-  return getItem(STORAGE_KEYS.CURRENT_USER);
-}
-
-export function saveCurrentUser(user) {
-  setItem(STORAGE_KEYS.CURRENT_USER, user);
-  // Also update in users list
-  const users = getAllUsers();
-  const idx = users.findIndex(u => u.id === user.id);
-  if (idx >= 0) {
-    users[idx] = user;
-  } else {
-    users.push(user);
-  }
-  setItem(STORAGE_KEYS.USERS, users);
-}
-
-export function registerUser(userData) {
-  const users = getAllUsers();
-  const existing = users.find(u => u.email === userData.email);
-  if (existing) return { success: false, message: 'Email already registered' };
-
-  const newUser = {
-    id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-    name: userData.name,
-    email: userData.email,
-    password: userData.password, // In production, use proper hashing
-    role: userData.role || 'student',
-    classCode: userData.classCode || '',
-    xp: 0,
-    level: 1,
-    badges: [],
-    loginStreak: 0,
-    lastLogin: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    avatar: userData.avatar || getRandomAvatar(),
-  };
-
-  users.push(newUser);
-  setItem(STORAGE_KEYS.USERS, users);
-  return { success: true, user: newUser };
-}
-
-export function loginUser(email, password) {
-  const users = getAllUsers();
-  const user = users.find(u => u.email === email && u.password === password);
-  if (!user) return { success: false, message: 'Invalid email or password' };
-
-  // Update login streak
-  const lastLogin = new Date(user.lastLogin);
-  const now = new Date();
-  const diffDays = Math.floor((now - lastLogin) / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 1) {
-    user.loginStreak = (user.loginStreak || 0) + 1;
-  } else if (diffDays > 1) {
-    user.loginStreak = 1;
-  }
-  user.lastLogin = now.toISOString();
-
-  saveCurrentUser(user);
-  return { success: true, user };
-}
-
-export function logoutUser() {
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-}
-
-function getRandomAvatar() {
-  const avatars = ['🧑‍🎓', '👩‍🎓', '🧑‍💻', '👨‍🔬', '👩‍🔬', '🧑‍🏫', '👨‍🎓', '👩‍💻'];
-  return avatars[Math.floor(Math.random() * avatars.length)];
+export async function getAllUsers() {
+  const snap = await get(ref(db, 'users'));
+  if (!snap.exists()) return [];
+  const data = snap.val();
+  return Object.entries(data).map(([id, user]) => ({ id, ...user }));
 }
 
 // ===== Quiz History =====
-export function getQuizHistory(userId) {
-  const history = getItem(STORAGE_KEYS.QUIZ_HISTORY) || {};
-  return history[userId] || [];
+
+export async function getQuizHistory(uid) {
+  const snap = await get(ref(db, `quizHistory/${uid}`));
+  if (!snap.exists()) return [];
+  const data = snap.val();
+  return Object.entries(data)
+    .map(([id, quiz]) => ({ id, ...quiz }))
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 }
 
-export function saveQuizResult(userId, result) {
-  const history = getItem(STORAGE_KEYS.QUIZ_HISTORY) || {};
-  if (!history[userId]) history[userId] = [];
-  
+export async function saveQuizResult(uid, result) {
+  const quizRef = push(ref(db, `quizHistory/${uid}`));
   const quizResult = {
-    id: `quiz_${Date.now()}`,
     ...result,
     timestamp: new Date().toISOString(),
   };
-  
-  history[userId].push(quizResult);
-  setItem(STORAGE_KEYS.QUIZ_HISTORY, history);
-  
+  await set(quizRef, quizResult);
+
   // Update leaderboard
-  updateLeaderboard(userId, result);
-  
-  return quizResult;
+  await updateLeaderboard(uid, result);
+
+  return { id: quizRef.key, ...quizResult };
 }
 
 // ===== Performance Analytics =====
-export function getPerformanceData(userId) {
-  const history = getQuizHistory(userId);
-  
+
+export async function getPerformanceData(uid) {
+  const history = await getQuizHistory(uid);
+
   if (history.length === 0) {
     return {
       totalQuizzes: 0,
@@ -146,12 +67,15 @@ export function getPerformanceData(userId) {
       overallAccuracy: 0,
       topicAccuracy: {},
       subjectAccuracy: {},
-      difficultyBreakdown: { easy: { correct: 0, total: 0 }, medium: { correct: 0, total: 0 }, hard: { correct: 0, total: 0 } },
-      streakData: [],
+      difficultyBreakdown: {
+        easy: { correct: 0, total: 0 },
+        medium: { correct: 0, total: 0 },
+        hard: { correct: 0, total: 0 },
+      },
       recentTrend: [],
-      timePerQuestion: [],
       weakAreas: [],
       strongAreas: [],
+      topicPerformance: [],
     };
   }
 
@@ -159,44 +83,48 @@ export function getPerformanceData(userId) {
   let totalQuestions = 0;
   const topicAccuracy = {};
   const subjectAccuracy = {};
-  const difficultyBreakdown = { easy: { correct: 0, total: 0 }, medium: { correct: 0, total: 0 }, hard: { correct: 0, total: 0 } };
-  
-  history.forEach(quiz => {
-    totalCorrect += quiz.correctAnswers;
-    totalQuestions += quiz.totalQuestions;
-    
+  const difficultyBreakdown = {
+    easy: { correct: 0, total: 0 },
+    medium: { correct: 0, total: 0 },
+    hard: { correct: 0, total: 0 },
+  };
+
+  history.forEach((quiz) => {
+    totalCorrect += quiz.correctAnswers || 0;
+    totalQuestions += quiz.totalQuestions || 0;
+
     // Topic accuracy
     const topicKey = `${quiz.subject} > ${quiz.topic}`;
     if (!topicAccuracy[topicKey]) topicAccuracy[topicKey] = { correct: 0, total: 0 };
-    topicAccuracy[topicKey].correct += quiz.correctAnswers;
-    topicAccuracy[topicKey].total += quiz.totalQuestions;
-    
+    topicAccuracy[topicKey].correct += quiz.correctAnswers || 0;
+    topicAccuracy[topicKey].total += quiz.totalQuestions || 0;
+
     // Subject accuracy
-    if (!subjectAccuracy[quiz.subject]) subjectAccuracy[quiz.subject] = { correct: 0, total: 0 };
-    subjectAccuracy[quiz.subject].correct += quiz.correctAnswers;
-    subjectAccuracy[quiz.subject].total += quiz.totalQuestions;
-    
+    if (quiz.subject) {
+      if (!subjectAccuracy[quiz.subject]) subjectAccuracy[quiz.subject] = { correct: 0, total: 0 };
+      subjectAccuracy[quiz.subject].correct += quiz.correctAnswers || 0;
+      subjectAccuracy[quiz.subject].total += quiz.totalQuestions || 0;
+    }
+
     // Difficulty breakdown
     if (quiz.difficulty && difficultyBreakdown[quiz.difficulty]) {
-      difficultyBreakdown[quiz.difficulty].correct += quiz.correctAnswers;
-      difficultyBreakdown[quiz.difficulty].total += quiz.totalQuestions;
+      difficultyBreakdown[quiz.difficulty].correct += quiz.correctAnswers || 0;
+      difficultyBreakdown[quiz.difficulty].total += quiz.totalQuestions || 0;
     }
   });
 
-  // Calculate weak and strong areas
   const topicPerformance = Object.entries(topicAccuracy).map(([topic, data]) => ({
     topic,
-    accuracy: Math.round((data.correct / data.total) * 100),
+    accuracy: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
     total: data.total,
   }));
 
-  const weakAreas = topicPerformance.filter(t => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy);
-  const strongAreas = topicPerformance.filter(t => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy);
+  const weakAreas = topicPerformance.filter((t) => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy);
+  const strongAreas = topicPerformance.filter((t) => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy);
 
-  // Recent trend (last 10 quizzes)
   const recentTrend = history.slice(-10).map((quiz, idx) => ({
     quiz: idx + 1,
-    accuracy: Math.round((quiz.correctAnswers / quiz.totalQuestions) * 100),
+    accuracy: quiz.totalQuestions > 0 ? Math.round((quiz.correctAnswers / quiz.totalQuestions) * 100) : 0,
     date: new Date(quiz.timestamp).toLocaleDateString(),
     topic: quiz.topic,
   }));
@@ -217,170 +145,96 @@ export function getPerformanceData(userId) {
 }
 
 // ===== Leaderboard =====
-function updateLeaderboard(userId, quizResult) {
-  const leaderboard = getItem(STORAGE_KEYS.LEADERBOARD) || {};
-  const users = getAllUsers();
-  const user = users.find(u => u.id === userId);
+
+async function updateLeaderboard(uid, quizResult) {
+  const user = await getUserProfile(uid);
   if (!user) return;
 
   const classCode = user.classCode || 'global';
-  if (!leaderboard[classCode]) leaderboard[classCode] = {};
+  const leaderRef = ref(db, `leaderboard/${classCode}/${uid}`);
+  const snap = await get(leaderRef);
 
-  if (!leaderboard[classCode][userId]) {
-    leaderboard[classCode][userId] = {
-      name: user.name,
-      avatar: user.avatar,
-      xp: 0,
-      quizzes: 0,
-      accuracy: 0,
-      totalCorrect: 0,
-      totalQuestions: 0,
-    };
-  }
+  const existing = snap.exists()
+    ? snap.val()
+    : { name: user.name, avatar: user.avatar || '🧑‍🎓', xp: 0, quizzes: 0, totalCorrect: 0, totalQuestions: 0, accuracy: 0 };
 
-  const entry = leaderboard[classCode][userId];
-  entry.xp = user.xp || 0;
-  entry.quizzes += 1;
-  entry.totalCorrect += quizResult.correctAnswers;
-  entry.totalQuestions += quizResult.totalQuestions;
-  entry.accuracy = Math.round((entry.totalCorrect / entry.totalQuestions) * 100);
+  existing.xp = user.xp || 0;
+  existing.name = user.name;
+  existing.quizzes += 1;
+  existing.totalCorrect += quizResult.correctAnswers || 0;
+  existing.totalQuestions += quizResult.totalQuestions || 0;
+  existing.accuracy = existing.totalQuestions > 0
+    ? Math.round((existing.totalCorrect / existing.totalQuestions) * 100) : 0;
 
-  setItem(STORAGE_KEYS.LEADERBOARD, leaderboard);
+  await set(leaderRef, existing);
 }
 
-export function getLeaderboard(classCode = 'global') {
-  const leaderboard = getItem(STORAGE_KEYS.LEADERBOARD) || {};
-  const classData = leaderboard[classCode] || {};
-  
-  return Object.entries(classData)
-    .map(([userId, data]) => ({ userId, ...data }))
+export async function getLeaderboard(classCode = 'global') {
+  const snap = await get(ref(db, `leaderboard/${classCode}`));
+  if (!snap.exists()) return [];
+  const data = snap.val();
+  return Object.entries(data)
+    .map(([userId, entry]) => ({ userId, ...entry }))
     .sort((a, b) => b.xp - a.xp);
 }
 
 // ===== Badge Management =====
-export function getUserBadges(userId) {
-  const badges = getItem(STORAGE_KEYS.BADGES) || {};
-  return badges[userId] || [];
+
+export async function getUserBadges(uid) {
+  const snap = await get(ref(db, `badges/${uid}`));
+  return snap.exists() ? snap.val() : [];
 }
 
-export function awardBadge(userId, badgeId) {
-  const badges = getItem(STORAGE_KEYS.BADGES) || {};
-  if (!badges[userId]) badges[userId] = [];
-  
-  if (!badges[userId].includes(badgeId)) {
-    badges[userId].push(badgeId);
-    setItem(STORAGE_KEYS.BADGES, badges);
+export async function awardBadge(uid, badgeId) {
+  const badges = await getUserBadges(uid);
+  if (Array.isArray(badges) && !badges.includes(badgeId)) {
+    badges.push(badgeId);
+    await set(ref(db, `badges/${uid}`), badges);
     return true;
   }
   return false;
 }
 
 // ===== XP Management =====
-export function addXP(userId, amount) {
-  const users = getAllUsers();
-  const user = users.find(u => u.id === userId);
+
+export async function addXP(uid, amount) {
+  const user = await getUserProfile(uid);
   if (!user) return null;
 
-  user.xp = (user.xp || 0) + amount;
-  user.level = Math.floor(user.xp / 250) + 1;
-  
-  const idx = users.findIndex(u => u.id === userId);
-  users[idx] = user;
-  setItem(STORAGE_KEYS.USERS, users);
-  
-  // Update current user if same
-  const currentUser = getCurrentUser();
-  if (currentUser && currentUser.id === userId) {
-    saveCurrentUser(user);
-  }
+  const newXP = (user.xp || 0) + amount;
+  const newLevel = Math.floor(newXP / 250) + 1;
 
-  return user;
+  await update(ref(db, `users/${uid}`), { xp: newXP, level: newLevel });
+
+  return { ...user, xp: newXP, level: newLevel };
 }
 
 // ===== Custom Quiz Management (Educator) =====
-export function getCustomQuizzes(educatorId) {
-  const quizzes = getItem(STORAGE_KEYS.CUSTOM_QUIZZES) || {};
-  return quizzes[educatorId] || [];
+
+export async function getCustomQuizzes(educatorUid) {
+  const snap = await get(ref(db, `customQuizzes/${educatorUid}`));
+  if (!snap.exists()) return [];
+  const data = snap.val();
+  return Object.entries(data).map(([id, quiz]) => ({ id, ...quiz }));
 }
 
-export function saveCustomQuiz(educatorId, quiz) {
-  const quizzes = getItem(STORAGE_KEYS.CUSTOM_QUIZZES) || {};
-  if (!quizzes[educatorId]) quizzes[educatorId] = [];
-  
+export async function saveCustomQuiz(educatorUid, quiz) {
+  const quizRef = push(ref(db, `customQuizzes/${educatorUid}`));
   const newQuiz = {
-    id: `custom_${Date.now()}`,
     ...quiz,
     createdAt: new Date().toISOString(),
   };
-  
-  quizzes[educatorId].push(newQuiz);
-  setItem(STORAGE_KEYS.CUSTOM_QUIZZES, quizzes);
-  return newQuiz;
+  await set(quizRef, newQuiz);
+  return { id: quizRef.key, ...newQuiz };
 }
 
-// ===== Educator: Get All Students Data =====
-export function getClassStudents(classCode) {
-  const users = getAllUsers();
-  return users.filter(u => u.role === 'student' && u.classCode === classCode);
+// ===== Educator: Get Class Students =====
+
+export async function getClassStudents(classCode) {
+  const users = await getAllUsers();
+  return users.filter((u) => u.role === 'student' && u.classCode === classCode);
 }
 
-export function getStudentPerformance(studentId) {
+export async function getStudentPerformance(studentId) {
   return getPerformanceData(studentId);
-}
-
-// ===== Seed Demo Data =====
-export function seedDemoData() {
-  const users = getAllUsers();
-  if (users.length > 0) return; // Already seeded
-
-  // Create demo students
-  const demoStudents = [
-    { name: 'Alice Johnson', email: 'alice@demo.com', password: 'demo123', role: 'student', classCode: 'CLASS001', avatar: '👩‍🎓' },
-    { name: 'Bob Smith', email: 'bob@demo.com', password: 'demo123', role: 'student', classCode: 'CLASS001', avatar: '🧑‍💻' },
-    { name: 'Carol Davis', email: 'carol@demo.com', password: 'demo123', role: 'student', classCode: 'CLASS001', avatar: '👩‍🔬' },
-    { name: 'David Lee', email: 'david@demo.com', password: 'demo123', role: 'student', classCode: 'CLASS001', avatar: '🧑‍🎓' },
-    { name: 'Emma Wilson', email: 'emma@demo.com', password: 'demo123', role: 'student', classCode: 'CLASS001', avatar: '👩‍💻' },
-  ];
-
-  // Create demo educator
-  const demoEducator = { name: 'Prof. Smith', email: 'prof@demo.com', password: 'demo123', role: 'educator', classCode: 'CLASS001', avatar: '🧑‍🏫' };
-  
-  demoStudents.forEach(s => registerUser(s));
-  registerUser(demoEducator);
-
-  // Seed some quiz history for demo students
-  const subjects = ['Mathematics', 'Science', 'Computer Science'];
-  const topics = {
-    Mathematics: ['Algebra', 'Geometry', 'Calculus'],
-    Science: ['Physics', 'Chemistry', 'Biology'],
-    'Computer Science': ['Data Structures', 'Programming Basics', 'Databases'],
-  };
-  const difficulties = ['easy', 'medium', 'hard'];
-
-  const allUsers = getAllUsers();
-  const students = allUsers.filter(u => u.role === 'student');
-
-  students.forEach(student => {
-    const numQuizzes = Math.floor(Math.random() * 8) + 3;
-    for (let i = 0; i < numQuizzes; i++) {
-      const subject = subjects[Math.floor(Math.random() * subjects.length)];
-      const topic = topics[subject][Math.floor(Math.random() * topics[subject].length)];
-      const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-      const totalQuestions = Math.floor(Math.random() * 5) + 5;
-      const correctAnswers = Math.floor(Math.random() * (totalQuestions + 1));
-      
-      saveQuizResult(student.id, {
-        subject,
-        topic,
-        difficulty,
-        totalQuestions,
-        correctAnswers,
-        timeTaken: Math.floor(Math.random() * 300) + 60,
-        xpEarned: correctAnswers * 10,
-      });
-    }
-
-    // Add some XP
-    addXP(student.id, Math.floor(Math.random() * 500) + 100);
-  });
 }
