@@ -1,0 +1,324 @@
+/* ===== Dashboard Styles (Student & Educator) ===== */
+.dashboard {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.dashboard-welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-8);
+}
+
+.dashboard-welcome h1 {
+  font-size: 1.6rem;
+  margin-bottom: var(--space-1);
+}
+
+.dashboard-welcome p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Stats */
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+/* Charts */
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-5);
+  color: var(--text-primary);
+}
+
+.chart-container {
+  width: 100%;
+}
+
+/* Bottom Section */
+.dashboard-bottom {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-5);
+}
+
+/* Weak Areas */
+.weak-areas-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.weak-area-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.weak-area-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.weak-area-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weak-area-accuracy {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.no-weak-areas {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding: var(--space-4) 0;
+}
+
+/* Recent Quizzes */
+.recent-quizzes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.recent-quiz-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-glass);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+}
+
+.recent-quiz-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-quiz-topic {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recent-quiz-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.recent-quiz-score {
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.recent-quiz-score.good {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-400);
+}
+
+.recent-quiz-score.needs-work {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-400);
+}
+
+/* Empty Dashboard */
+.empty-dashboard {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-16) 0;
+}
+
+.empty-dashboard-card {
+  text-align: center;
+  padding: var(--space-12);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  max-width: 450px;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: var(--space-6);
+}
+
+.empty-dashboard-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: var(--space-3);
+}
+
+.empty-dashboard-card p {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  font-size: 0.9rem;
+}
+
+/* ===== Educator Dashboard Specific ===== */
+.educator-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.heatmap-cell {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+.heatmap-cell .heatmap-topic {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  color: var(--text-primary);
+}
+
+.heatmap-cell .heatmap-value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.student-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.student-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+}
+
+.student-row:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-default);
+}
+
+.student-row-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.student-row-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-row-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.student-row-stats {
+  display: flex;
+  gap: var(--space-6);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.student-row-stats span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media (max-width: 1024px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-welcome {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .educator-stats {
+    grid-template-columns: 1fr;
+  }
+}
