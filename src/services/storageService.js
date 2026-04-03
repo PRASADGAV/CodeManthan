@@ -274,6 +274,7 @@ export async function saveIntroQuizResult(uid, payload) {
     studyKeywords,
     onboardingDomainScores,
     onboardingQuizSummary,
+    onboardingIntroAccuracy,
   } = payload;
 
   const updatePayload = {
@@ -286,6 +287,7 @@ export async function saveIntroQuizResult(uid, payload) {
   if (studyKeywords !== undefined) updatePayload.studyKeywords = studyKeywords;
   if (onboardingDomainScores !== undefined) updatePayload.onboardingDomainScores = onboardingDomainScores;
   if (onboardingQuizSummary !== undefined) updatePayload.onboardingQuizSummary = onboardingQuizSummary;
+  if (onboardingIntroAccuracy !== undefined) updatePayload.onboardingIntroAccuracy = onboardingIntroAccuracy;
 
   await update(ref(db, `users/${uid}`), updatePayload);
 }

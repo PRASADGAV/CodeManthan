@@ -29,6 +29,78 @@ export function getSkillRadarRows(subjectAccuracy = {}) {
   });
 }
 
+/** Split onboarding keyword string into radar axes (commas, semicolons, bullets, newlines). */
+export function parseStudyKeywords(studyKeywords) {
+  if (!studyKeywords || typeof studyKeywords !== 'string') return [];
+  const s = studyKeywords.trim();
+  if (!s) return [];
+  const parts = s
+    .split(/[,;•]|\n+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  const unique = [...new Set(parts.length >= 2 ? parts : [s])];
+  return unique.slice(0, 8);
+}
+
+/**
+ * Radar corners = user's first-quiz keywords. Scores: topic matches from library quizzes,
+ * else overall accuracy after more quizzes, else baseline from first quiz (% correct).
+ * @returns {null | Array<{ skill: string, fullLabel: string, accuracy: number, practiced: boolean, baselineOnly?: boolean }>}
+ */
+export function getKeywordRadarRows(user, performance) {
+  const keywords = parseStudyKeywords(user?.studyKeywords);
+  if (!keywords.length) return null;
+
+  const introAcc =
+    typeof user?.onboardingIntroAccuracy === 'number' ? user.onboardingIntroAccuracy : null;
+  const domainScores = user?.onboardingDomainScores || {};
+  const domainAvg =
+    introAcc == null && Object.keys(domainScores).length
+      ? Math.round(
+          Object.values(domainScores).reduce((a, b) => Number(a) + Number(b), 0) /
+            Object.keys(domainScores).length,
+        )
+      : null;
+  const fallbackBaseline = introAcc ?? domainAvg ?? 0;
+  const hasLibraryActivity = (performance?.totalQuizzes || 0) > 0;
+  const topicPerf = performance?.topicPerformance || [];
+
+  return keywords.map((full) => {
+    const short = full.length > 16 ? `${full.slice(0, 15)}…` : full;
+    const kw = full.toLowerCase();
+
+    const match = topicPerf.find((t) => {
+      const tl = t.topic.toLowerCase();
+      if (tl.includes(kw) || (kw.length > 3 && kw.includes(tl))) return true;
+      const words = kw.split(/\s+/).filter((w) => w.length > 2);
+      return words.length > 0 && words.every((w) => tl.includes(w));
+    });
+
+    let accuracy = fallbackBaseline;
+    let practiced = false;
+    let baselineOnly = false;
+
+    if (match && match.total > 0) {
+      accuracy = match.accuracy;
+      practiced = true;
+    } else if (hasLibraryActivity) {
+      accuracy = performance.overallAccuracy ?? fallbackBaseline;
+      practiced = true;
+    } else if (introAcc != null || domainAvg != null) {
+      accuracy = fallbackBaseline;
+      baselineOnly = true;
+    }
+
+    return {
+      skill: short,
+      fullLabel: full,
+      accuracy,
+      practiced,
+      baselineOnly,
+    };
+  });
+}
+
 /** @returns {null | Array<{ skill: string, accuracy: number, practiced: boolean, baselineOnly?: boolean }>} */
 export function getDomainRadarRows(user, performance) {
   const ids = user?.studyDomainIds;
@@ -201,4 +273,39 @@ export function getImprovementSuggestions(performance) {
   const kindOrder = { focus: 0, explore: 1, habit: 2, celebrate: 3 };
   out.sort((a, b) => kindOrder[a.kind] - kindOrder[b.kind]);
   return out.slice(0, 7);
+}
+
+/** Offline fallback for review topics when Gemini is unavailable. */
+export function buildFallbackReviewTopics(performance) {
+  const topics = [];
+  const seen = new Set();
+
+  const push = (name, reason) => {
+    const key = name.toLowerCase();
+    if (seen.has(key) || !name) return;
+    seen.add(key);
+    topics.push({ name, reason });
+  };
+
+  (performance.domainWeakAreas || []).slice(0, 2).forEach((a) => {
+    push(a.topic, `About ${a.accuracy}% on recent tries—short review and practice questions will help.`);
+  });
+  (performance.weakAreas || []).slice(0, 3).forEach((a) => {
+    push(a.topic, `Accuracy around ${a.accuracy}%—re-read basics then try a short quiz on this topic.`);
+  });
+
+  if (topics.length === 0 && (performance.totalQuizzes || 0) === 0) {
+    push('Your focus areas', 'Complete a quiz to unlock tailored review ideas.');
+  }
+
+  if (topics.length === 0) {
+    push('Balanced practice', 'Rotate across subjects to keep skills sharp.');
+  }
+
+  const summary =
+    topics.length > 0
+      ? 'Based on your last quizzes, prioritize these areas.'
+      : 'Keep practicing—more data will refine these suggestions.';
+
+  return { summary, topics: topics.slice(0, 5), source: 'fallback' };
 }

@@ -3,30 +3,29 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPerformanceData, getQuizHistory } from '../services/storageService';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
 } from 'recharts';
 import {
-  LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTrendingUp, LuTriangleAlert, LuRoute,
-  LuLoader, LuSparkles, LuCompass, LuLightbulb, LuCircleCheck,
+  LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTriangleAlert,
+  LuLoader, LuSparkles, LuCompass, LuLightbulb, LuRoute,
 } from 'react-icons/lu';
 import {
-  getSkillRadarRows,
-  getDomainRadarRows,
-  getGuidanceSteps,
-  getImprovementSuggestions,
+  getKeywordRadarRows,
+  buildFallbackReviewTopics,
 } from '../utils/dashboardInsights';
+import { generateReviewSuggestionsFromQuiz, domainIdToLabel } from '../services/personalizedQuizService';
 import './Dashboard.css';
 
 function RadarSkillTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
-  let detail = 'Not practiced yet — take a quiz';
+  const title = row.fullLabel || row.skill;
+  let detail = 'Add library quizzes that match this keyword for a sharper score';
   if (row.baselineOnly) detail = `${row.accuracy}% · baseline from your first quiz`;
-  else if (row.practiced) detail = `${row.accuracy}% accuracy`;
+  else if (row.practiced) detail = `${row.accuracy}% · blended from your activity`;
   return (
     <div className="sd-chart-tooltip">
-      <strong>{row.skill}</strong>
+      <strong>{title}</strong>
       <span>{detail}</span>
     </div>
   );
@@ -58,6 +57,8 @@ export default function StudentDashboard() {
   const [performance, setPerformance] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewPack, setReviewPack] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -78,38 +79,62 @@ export default function StudentDashboard() {
       }
     }
     fetchData();
-  }, [user?.id, user?.introQuizCompleted, user?.studyDomainIds, user?.studyKeywords, user?.onboardingQuizSummary, user?.onboardingDomainScores]);
+  }, [user?.id, user?.introQuizCompleted, user?.studyDomainIds, user?.studyKeywords, user?.onboardingQuizSummary, user?.onboardingDomainScores, user?.onboardingIntroAccuracy]);
 
-  const skillRadarRows = useMemo(
-    () => getSkillRadarRows(performance?.subjectAccuracy),
-    [performance?.subjectAccuracy],
-  );
-
-  const domainRadarRows = useMemo(
-    () => getDomainRadarRows(user, performance) ?? [],
+  const keywordRadarRows = useMemo(
+    () => getKeywordRadarRows(user, performance) ?? [],
     [user, performance],
   );
-  const showDomainRadar = domainRadarRows.length > 0;
+  const showKeywordRadar = keywordRadarRows.length > 0;
 
-  const guidanceSteps = useMemo(
-    () => (performance ? getGuidanceSteps(performance, user) : []),
-    [performance, user],
+  const keywordSignals = useMemo(
+    () => keywordRadarRows.filter((r) => r.practiced || r.baselineOnly).length,
+    [keywordRadarRows],
   );
 
-  const suggestions = useMemo(
-    () => (performance ? getImprovementSuggestions(performance) : []),
-    [performance],
-  );
+  useEffect(() => {
+    if (!user || !performance) return;
+    let cancelled = false;
 
-  const practicedSkills = useMemo(
-    () => skillRadarRows.filter((r) => r.practiced).length,
-    [skillRadarRows],
-  );
+    const subjectAccuracyCompact = Object.fromEntries(
+      Object.entries(performance.subjectAccuracy || {})
+        .filter(([, v]) => v && v.total > 0)
+        .map(([k, v]) => [k, { pct: Math.round((v.correct / v.total) * 100), n: v.total }]),
+    );
 
-  const practicedDomains = useMemo(
-    () => domainRadarRows.filter((r) => r.practiced || r.baselineOnly).length,
-    [domainRadarRows],
-  );
+    const context = {
+      studyDomains: (user.studyDomainIds || []).map(domainIdToLabel),
+      studyKeywords: user.studyKeywords || '',
+      onboardingQuizSummary: user.onboardingQuizSummary || '',
+      onboardingDomainScores: user.onboardingDomainScores || {},
+      overallAccuracy: performance.overallAccuracy,
+      totalQuizzes: performance.totalQuizzes,
+      domainWeakAreas: (performance.domainWeakAreas || []).slice(0, 4),
+      weakAreas: (performance.weakAreas || []).slice(0, 5),
+      subjectAccuracy: subjectAccuracyCompact,
+    };
+
+    async function run() {
+      setReviewLoading(true);
+      try {
+        const ai = await generateReviewSuggestionsFromQuiz(context);
+        if (cancelled) return;
+        if (ai) {
+          setReviewPack(ai);
+        } else {
+          setReviewPack(buildFallbackReviewTopics(performance));
+        }
+      } catch (e) {
+        if (!cancelled) setReviewPack(buildFallbackReviewTopics(performance));
+      } finally {
+        if (!cancelled) setReviewLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, performance]);
 
   if (loading || !performance) {
     return (
@@ -121,31 +146,8 @@ export default function StudentDashboard() {
   }
 
   const hasQuizActivity = performance.totalQuizzes > 0;
-
-  const trendData = performance.recentTrend;
-
-  const subjectData = Object.entries(performance.subjectAccuracy || {}).map(([subject, data]) => ({
-    subject: subject.replace('Computer Science', 'CS'),
-    accuracy: Math.round((data.correct / data.total) * 100),
-  }));
-
-  const difficultyData = Object.entries(performance.difficultyBreakdown || {}).map(([diff, data]) => ({
-    difficulty: diff.charAt(0).toUpperCase() + diff.slice(1),
-    correct: data.correct,
-    total: data.total,
-    accuracy: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
-  }));
-
-  const chartTooltipStyle = {
-    backgroundColor: 'var(--card)',
-    border: '1px solid var(--card-border)',
-    borderRadius: '12px',
-    color: 'var(--text)',
-    fontSize: '0.8rem',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-  };
-
   const firstName = user?.name?.split(' ')[0] || 'Student';
+  const displayReview = reviewPack || buildFallbackReviewTopics(performance);
 
   return (
     <div className="dashboard sd-dashboard sd-dashboard--genz animate-fadeIn">
@@ -161,8 +163,8 @@ export default function StudentDashboard() {
               {user?.studyKeywords
                 ? <>Your focus: <em className="sd-kw-chip">{user.studyKeywords.slice(0, 120)}{user.studyKeywords.length > 120 ? '…' : ''}</em></>
                 : hasQuizActivity
-                  ? 'Track domains + library skills, spot gaps, and follow next steps from your quizzes.'
-                  : 'Complete onboarding to see domain radar and tailored guidance.'}
+                  ? 'Your radar uses the keywords you typed at setup; suggestions follow your quizzes.'
+                  : 'Finish onboarding—split keywords with commas so each shows on the radar.'}
             </p>
           </div>
           <div className="sd-hero-actions">
@@ -183,13 +185,12 @@ export default function StudentDashboard() {
           <LuCompass className="sd-empty-banner-icon" aria-hidden />
           <div>
             <strong>No quiz history yet</strong>
-            <p>Your skill radar and suggestions below use demo baselines until you complete quizzes. One short quiz is enough to personalize everything.</p>
+            <p>Your radar uses your first-quiz score on each keyword until library quizzes add more detail.</p>
           </div>
           <Link to="/quiz/select" className="btn btn-primary btn-sm">Browse quizzes</Link>
         </div>
       )}
 
-      {/* Stats */}
       <div className="dashboard-stats sd-stats">
         <div className="stat-card sd-stat-card">
           <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(212,100,92,0.12)', color: '#D4645C' }}>
@@ -221,24 +222,25 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Radar + guidance + suggestions */}
       <section className="sd-main-grid">
         <div className="sd-radar-column">
-          {showDomainRadar && (
-            <div className="chart-card sd-radar-card sd-radar-card--domain">
-              <div className="sd-radar-head">
-                <h3 className="chart-title sd-radar-title">
-                  <LuSparkles /> Your domains
-                </h3>
-                <p className="sd-radar-caption">
-                  Based on what you chose{practicedDomains > 0 ? ` · ${practicedDomains} signals` : ''}. Scores blend your onboarding quiz and any follow-up attempts.
-                </p>
-              </div>
-              <div className="sd-radar-chart-wrap sd-radar-chart-wrap--compact">
-                <ResponsiveContainer width="100%" height={280}>
-                  <RadarChart data={domainRadarRows} cx="50%" cy="52%" outerRadius="78%">
+          <div className="chart-card sd-radar-card sd-radar-card--domain">
+            <div className="sd-radar-head">
+              <h3 className="chart-title sd-radar-title">
+                <LuTarget /> Your keywords
+              </h3>
+              <p className="sd-radar-caption">
+                {showKeywordRadar
+                  ? `Corners come from the keywords you entered before the first quiz (use commas to separate). ${keywordSignals > 0 ? `${keywordSignals} with a score signal.` : ''} Matches to quiz topics refine each spoke.`
+                  : 'Add keywords when you build your first quiz—each phrase can become a corner (split with commas).'}
+              </p>
+            </div>
+            <div className="sd-radar-chart-wrap sd-radar-chart-wrap--compact">
+              {showKeywordRadar ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <RadarChart data={keywordRadarRows} cx="50%" cy="52%" outerRadius="78%">
                     <defs>
-                      <linearGradient id="sdRadarFillDomain" x1="0" y1="0" x2="1" y2="1">
+                      <linearGradient id="sdRadarFillFocus" x1="0" y1="0" x2="1" y2="1">
                         <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.4} />
                         <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.2} />
                       </linearGradient>
@@ -261,7 +263,7 @@ export default function StudentDashboard() {
                       dataKey="accuracy"
                       stroke="#a78bfa"
                       strokeWidth={2.5}
-                      fill="url(#sdRadarFillDomain)"
+                      fill="url(#sdRadarFillFocus)"
                       fillOpacity={1}
                       dot={{ r: 4, fill: '#a78bfa', strokeWidth: 0 }}
                       isAnimationActive
@@ -270,94 +272,35 @@ export default function StudentDashboard() {
                     />
                   </RadarChart>
                 </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          <div className="chart-card sd-radar-card">
-            <div className="sd-radar-head">
-              <h3 className="chart-title sd-radar-title">
-                <LuTarget /> Library skills
-              </h3>
-              <p className="sd-radar-caption">
-                CodeManthan topic quizzes{practicedSkills > 0 ? ` · ${practicedSkills} subjects with data` : ''}. Take topic quizzes to grow this shape.
-              </p>
-            </div>
-            <div className="sd-radar-chart-wrap">
-              <ResponsiveContainer width="100%" height={showDomainRadar ? 260 : 320}>
-                <RadarChart data={skillRadarRows} cx="50%" cy="52%" outerRadius="78%">
-                  <defs>
-                    <linearGradient id="sdRadarFill" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#D4645C" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#5B8FB9" stopOpacity={0.2} />
-                    </linearGradient>
-                  </defs>
-                  <PolarGrid stroke="var(--border)" strokeDasharray="3 6" />
-                  <PolarAngleAxis
-                    dataKey="skill"
-                    tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 600 }}
-                    tickLine={false}
-                  />
-                  <PolarRadiusAxis
-                    angle={90}
-                    domain={[0, 100]}
-                    tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
-                    tickCount={5}
-                    stroke="var(--border)"
-                  />
-                  <Tooltip content={<RadarSkillTooltip />} />
-                  <Radar
-                    name="Accuracy"
-                    dataKey="accuracy"
-                    stroke="#D4645C"
-                    strokeWidth={2.5}
-                    fill="url(#sdRadarFill)"
-                    fillOpacity={1}
-                    dot={{ r: 4, fill: '#D4645C', strokeWidth: 0 }}
-                    isAnimationActive
-                    animationDuration={900}
-                    animationEasing="ease-out"
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
+              ) : (
+                <div className="sd-radar-empty glass-card">
+                  <p className="sd-muted">Complete onboarding and add at least one keyword (comma-separated for several corners).</p>
+                  <Link to="/quiz/select" className="btn btn-primary btn-sm">Start setup quiz</Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="sd-insights-stack">
-          <div className="glass-card sd-guidance-card">
+          <div className="glass-card sd-suggestions-card sd-suggestions-card--single">
             <h3 className="card-title sd-card-title">
-              <LuCompass /> Guidance
+              <LuLightbulb /> Suggestions
+              {reviewLoading && <LuLoader className="sd-inline-loader pq-spin" aria-hidden />}
             </h3>
-            <ol className="sd-guidance-steps">
-              {guidanceSteps.map((s) => (
-                <li key={s.n} className="sd-guidance-step">
-                  <span className="sd-guidance-num">{s.n}</span>
-                  <div>
-                    <strong>{s.title}</strong>
-                    <p>{s.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="glass-card sd-suggestions-card">
-            <h3 className="card-title sd-card-title">
-              <LuLightbulb /> Suggestions to improve
-            </h3>
-            <ul className="sd-suggestion-list">
-              {suggestions.map((s) => (
-                <li key={s.id} className={`sd-suggestion sd-suggestion--${s.kind}`}>
+            <p className="sd-review-summary">{displayReview.summary}</p>
+            <p className="sd-review-meta sd-muted">
+              {displayReview.source === 'gemini' ? 'Personalized with Gemini from your quiz data.' : 'Suggestions from your scores (add VITE_GEMINI_API_KEY for AI wording).'}
+            </p>
+            <ul className="sd-suggestion-list sd-review-topic-list">
+              {displayReview.topics.map((t, idx) => (
+                <li key={`${t.name}-${idx}`} className="sd-suggestion sd-suggestion--focus">
                   <span className="sd-suggestion-icon" aria-hidden>
-                    {s.kind === 'focus' && <LuTriangleAlert />}
-                    {s.kind === 'explore' && <LuBookOpen />}
-                    {s.kind === 'habit' && <LuTrendingUp />}
-                    {s.kind === 'celebrate' && <LuCircleCheck />}
+                    <LuTriangleAlert />
                   </span>
                   <div>
-                    <strong>{s.title}</strong>
-                    <p>{s.detail}</p>
+                    <strong>{t.name}</strong>
+                    <p>{t.reason}</p>
                   </div>
                 </li>
               ))}
@@ -366,105 +309,8 @@ export default function StudentDashboard() {
         </div>
       </section>
 
-      {hasQuizActivity && (
-        <>
-          <div className="dashboard-charts sd-charts-row">
-            <div className="chart-card sd-chart-animate">
-              <h3 className="chart-title">
-                <LuTrendingUp /> Recent performance
-              </h3>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                    <XAxis dataKey="quiz" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis stroke="var(--text-muted)" fontSize={12} domain={[0, 100]} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Line
-                      type="monotone"
-                      dataKey="accuracy"
-                      stroke="#D4645C"
-                      strokeWidth={2.5}
-                      dot={{ fill: '#D4645C', r: 4 }}
-                      activeDot={{ r: 6, fill: '#B04A43' }}
-                      isAnimationActive
-                      animationDuration={700}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="chart-card sd-chart-animate">
-              <h3 className="chart-title">Difficulty mix</h3>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={difficultyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                    <XAxis dataKey="difficulty" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis stroke="var(--text-muted)" fontSize={12} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="correct" fill="#4CAF82" radius={[4, 4, 0, 0]} name="Correct" />
-                    <Bar dataKey="total" fill="rgba(0,0,0,0.06)" radius={[4, 4, 0, 0]} name="Total" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-charts">
-            <div className="chart-card sd-chart-animate">
-              <h3 className="chart-title">Subject accuracy</h3>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={subjectData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                    <XAxis type="number" domain={[0, 100]} stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis dataKey="subject" type="category" stroke="var(--text-muted)" fontSize={11} width={100} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="accuracy" fill="#5B8FB9" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="dashboard-bottom sd-bottom">
-        <div className="glass-card weak-areas-card sd-panel">
-          <h3 className="card-title">
-            <LuTriangleAlert style={{ color: '#E0A546' }} /> Topics to review
-          </h3>
-          {performance.weakAreas.length > 0 ? (
-            <div className="weak-areas-list">
-              {performance.weakAreas.slice(0, 5).map((area, idx) => (
-                <div key={idx} className="weak-area-item">
-                  <div className="weak-area-info">
-                    <span className="weak-area-name">{area.topic}</span>
-                    <span className="weak-area-accuracy">{area.accuracy}% accuracy</span>
-                  </div>
-                  <div className="progress-bar" style={{ width: '100px' }}>
-                    <div
-                      className="progress-fill"
-                      style={{
-                        width: `${area.accuracy}%`,
-                        background: area.accuracy < 40 ? 'var(--danger)' : 'linear-gradient(90deg, var(--accent), var(--accent-light))',
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="no-weak-areas">No topics flagged below threshold. Keep practicing across subjects.</p>
-          )}
-          <Link to="/learning-path" className="btn btn-secondary btn-sm sd-panel-link">
-            <LuRoute /> Open learning path
-          </Link>
-        </div>
-
-        <div className="glass-card recent-quizzes-card sd-panel">
+      <div className="dashboard-bottom sd-bottom sd-bottom--single">
+        <div className="glass-card recent-quizzes-card sd-panel sd-panel--wide">
           <h3 className="card-title">Recent quizzes</h3>
           {history.length > 0 ? (
             <div className="recent-quizzes-list">

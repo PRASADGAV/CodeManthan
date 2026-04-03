@@ -102,6 +102,7 @@ export default function SubjectSelectModal() {
       const summary = weakest
         ? `Onboarding: ${score}/${totalQuestions}. Consider extra work in ${weakest[0]} (${weakest[1]}%).`
         : `Onboarding quiz: ${score}/${totalQuestions}.`;
+      const onboardingIntroAccuracy = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
 
       await saveIntroQuizResult(user.id, {
         score,
@@ -110,6 +111,7 @@ export default function SubjectSelectModal() {
         studyKeywords: keywords.trim(),
         onboardingDomainScores: domainScoresPct,
         onboardingQuizSummary: summary,
+        onboardingIntroAccuracy,
       });
 
       const accuracy = Math.round((score / totalQuestions) * 100);
@@ -141,6 +143,7 @@ export default function SubjectSelectModal() {
         studyKeywords: keywords.trim(),
         onboardingDomainScores: domainScoresPct,
         onboardingQuizSummary: summary,
+        onboardingIntroAccuracy,
         xp: (user.xp || 0) + xpEarned,
         level: Math.floor(((user.xp || 0) + xpEarned) / 250) + 1,
       });
@@ -165,7 +168,7 @@ export default function SubjectSelectModal() {
             <span className="ssm-gen__badge"><LuSparkles /> Let’s personalize</span>
             <h1 className="ssm-gen__title">Build your first quiz</h1>
             <p className="ssm-gen__lead">
-              Pick the domains you care about and add keywords (e.g. “JEE mechanics”, “CA foundation accounts”, “NEET biology”).
+              Pick the domains you care about and add keywords—use <strong>commas</strong> between phrases so each one gets its own corner on your dashboard radar (e.g. “JEE mechanics, calculus, organic chemistry”).
               We’ll generate 10 questions shaped around <strong>you</strong>.
             </p>
 

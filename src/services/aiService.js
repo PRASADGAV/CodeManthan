@@ -1,19 +1,55 @@
 // AI Service for Topic Explanation and Adaptive Learning Path
-// Uses Claude API (Anthropic) for AI-powered features
-// Set your API key in the .env file: VITE_CLAUDE_API_KEY=your_key_here
+// Learning path: Gemini first (VITE_GEMINI_API_KEY), then Claude (VITE_CLAUDE_API_KEY)
+// Set keys in .env as needed
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-// Get API key from environment variable
-const getApiKey = () => {
-  return import.meta.env.VITE_CLAUDE_API_KEY || '';
-};
+const getClaudeApiKey = () => import.meta.env.VITE_CLAUDE_API_KEY || '';
+
+function stripJsonFence(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^```(?:\w+)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  return t;
+}
+
+/** Onboarding / first quiz rows pollute topic stats with this label — exclude from learning-path context. */
+const INTRO_QUIZ_NOISE = /personalized quiz|^personalized study$/i;
+
+export function isIntroQuizNoiseTopic(topic, subject) {
+  const t = String(topic || '');
+  const s = String(subject || '');
+  return INTRO_QUIZ_NOISE.test(t) || s.trim().toLowerCase() === 'personalized study';
+}
+
+export function filterLearningPathWeakAreas(weakAreas) {
+  return (weakAreas || []).filter((w) => !isIntroQuizNoiseTopic(w.topic, w.subject));
+}
+
+export function filterLearningPathQuizHistory(quizHistory) {
+  return (quizHistory || []).filter((q) => !isIntroQuizNoiseTopic(q.topic, q.subject));
+}
+
+/** What the 7-day plan should be about — prompt wins, then first keyword, then domain. */
+export function resolvePrimaryStudyTopic(context = {}) {
+  const prompt = String(context.userPrompt || '').trim();
+  if (prompt) return prompt.split(/[,;\n]/)[0].trim().slice(0, 120);
+  const kw = String(context.studyKeywords || '').trim();
+  if (kw) {
+    const first = kw.split(/[,;•]/).map((x) => x.trim()).filter(Boolean)[0];
+    if (first) return first.slice(0, 120);
+  }
+  const labels = context.domainLabels;
+  if (Array.isArray(labels) && labels.length) return String(labels[0]).slice(0, 120);
+  return '';
+}
 
 /**
  * Generate a personalized explanation for a wrongly answered question
  */
 export async function getTopicExplanation(question, userAnswer, correctAnswer, topic) {
-  const apiKey = getApiKey();
+  const apiKey = getClaudeApiKey();
   
   // If no API key, use built-in explanation
   if (!apiKey) {
@@ -61,80 +97,205 @@ Keep it concise and student-friendly.`
   }
 }
 
-/**
- * @param {object} context - Optional: userPrompt, studyDomainIds, studyKeywords, onboardingQuizSummary
- */
-export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLevel, context = {}) {
-  const apiKey = getApiKey();
+function buildLearningPathJsonPrompt(weakAreas, quizHistory, currentLevel, context = {}) {
   const {
     userPrompt = '',
     studyDomainIds = [],
     studyKeywords = '',
     onboardingQuizSummary = '',
+    onboardingIntroAccuracy = null,
+    domainLabels = [],
+    performanceSnapshot = null,
   } = context;
 
+  const primaryTopic = resolvePrimaryStudyTopic(context) || 'the student’s focus topic';
+
   const domainLine = studyDomainIds.length
-    ? `Student-chosen domains (IDs): ${studyDomainIds.join(', ')}. Keywords they care about: ${studyKeywords || '(none)'}.\n`
+    ? `Student-chosen domain IDs: ${studyDomainIds.join(', ')}.\n`
+    : '';
+  const domainHuman =
+    domainLabels.length > 0
+      ? `Domain themes from onboarding: ${domainLabels.join(', ')}.\n`
+      : '';
+  const keywordsLine = studyKeywords
+    ? `Onboarding keywords string: ${studyKeywords}\n`
     : '';
 
   const onboardingLine = onboardingQuizSummary
-    ? `First personalized onboarding quiz insight: ${onboardingQuizSummary}\n`
+    ? `First onboarding quiz note: ${onboardingQuizSummary}\n`
     : '';
+
+  const introAccLine =
+    typeof onboardingIntroAccuracy === 'number'
+      ? `Onboarding quiz score: ~${onboardingIntroAccuracy}% correct.\n`
+      : '';
 
   const userAsk = userPrompt.trim()
-    ? `The student wrote this request for their roadmap: "${userPrompt.trim()}"\nPrioritize aligning the plan with this.\n`
+    ? `Student typed this in the roadmap box (highest priority): "${userPrompt.trim()}"\n`
     : '';
 
-  if (!apiKey) {
-    return getFallbackLearningPath(weakAreas, context);
+  const perfBlock =
+    performanceSnapshot && typeof performanceSnapshot === 'object'
+      ? `Library quiz performance (JSON — use to adjust difficulty and emphasis; ignore noise topic names):\n${JSON.stringify(performanceSnapshot)}\n`
+      : '';
+
+  return `You are an expert tutor. Output STRICT JSON only (no markdown, no text before/after).
+
+PRIMARY_TOPIC (the 7-day plan MUST teach THIS in order — e.g. if "DSA", use a standard CS sequence: complexity → arrays → linked lists → stacks/queues → trees → graphs/heaps → revision; adapt similarly for JEE, NEET, CA, etc.):
+"${primaryTopic}"
+
+STUDENT CONTEXT:
+${onboardingLine}${introAccLine}${domainLine}${domainHuman}${keywordsLine}${userAsk}${perfBlock}Weak library topics (<70%, excluding onboarding noise): ${JSON.stringify(weakAreas)}
+Recent real quiz rows: ${JSON.stringify(
+    quizHistory.slice(-10).map((q) => ({
+      topic: q.topic,
+      subject: q.subject,
+      accuracy: q.accuracy,
+      correct: q.correctAnswers,
+      total: q.totalQuestions,
+    })),
+  )}
+App level: ${currentLevel}
+
+Return ONE JSON object:
+
+{
+  "primaryTopic": "repeat PRIMARY_TOPIC verbatim",
+  "summary": "2-4 sentences: what they will know after 7 days.",
+  "diagramDescription": "One sentence: linear 7-day roadmap for PRIMARY_TOPIC.",
+  "diagramMermaid": "Mermaid flowchart LR with EXACTLY 7 nodes D1 to D7 labeled Day1..Day7 (short), arrows D1-->D2-->D3-->D4-->D5-->D6-->D7. Use simple ASCII labels only, no quotes inside brackets.",
+  "sevenDayPlan": [
+    {
+      "day": 1,
+      "title": "Day 1 — short subtitle for PRIMARY_TOPIC",
+      "timeEstimate": "e.g. 2–3 hours total",
+      "overview": "What to study today, why it comes first in the sequence.",
+      "studySequence": [
+        "First (45 min): …",
+        "Then (30 min): …",
+        "Last (15 min): …"
+      ],
+      "subtopics": [
+        {
+          "name": "Concrete micro-topic name",
+          "detail": "What to read/practice and how to verify you got it.",
+          "youtubeUrl": "",
+          "youtubeSearchQuery": "specific YouTube search, e.g. PRIMARY_TOPIC subtopic tutorial hindi"
+        }
+      ],
+      "actions": ["Optional checklist"]
+    }
+  ],
+  "funChallenge": "One small challenge tied to PRIMARY_TOPIC.",
+  "quizReminder": "How to use CodeManthan quizzes to check progress."
+}
+
+RULES:
+- "sevenDayPlan" MUST have exactly 7 objects with "day" 1..7 and titles starting "Day 1 —", "Day 2 —", … "Day 7 —".
+- Each day: at least 2 "subtopics", each with rich "detail" AND a useful "youtubeSearchQuery" for that day’s concepts (language agnostic unless context implies one). Prefer real "youtubeUrl" only when certain; else "".
+- "studySequence" MUST list the order of study blocks that day (3–5 strings with time hints).
+- Never use the phrase "Your personalized quiz" or generic onboarding labels as topic names — always real subject matter tied to PRIMARY_TOPIC.
+- Connect harder days to weak library topics when performance JSON shows gaps; otherwise follow the canonical learning sequence for PRIMARY_TOPIC.`;
+}
+
+/** Compact rollup for Gemini / Claude prompts (all prior quiz performance). */
+export function compactPerformanceForLearningPath(performance) {
+  if (!performance || typeof performance !== 'object') return null;
+  const subjectSummary = Object.entries(performance.subjectAccuracy || {})
+    .map(([subject, v]) => ({
+      subject,
+      n: v.total,
+      pct: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+    }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 14);
+
+  const weakAreas = (performance.weakAreas || []).filter((w) => !isIntroQuizNoiseTopic(w.topic, ''));
+  const strongAreas = (performance.strongAreas || []).filter((w) => !isIntroQuizNoiseTopic(w.topic, ''));
+
+  return {
+    overallAccuracy: performance.overallAccuracy,
+    totalQuizzes: performance.totalQuizzes,
+    totalQuestions: performance.totalQuestions,
+    totalCorrect: performance.totalCorrect,
+    domainPerformance: (performance.domainPerformance || []).slice(0, 10),
+    domainWeakAreas: (performance.domainWeakAreas || []).slice(0, 8),
+    subjectSummary: subjectSummary.filter((x) => x.subject && !/^personalized study$/i.test(x.subject)),
+    difficultyBreakdown: performance.difficultyBreakdown || {},
+    recentTrend: (performance.recentTrend || []).slice(-10),
+    weakTopicLabels: weakAreas.slice(0, 12).map((w) => w.topic),
+    strongTopicLabels: strongAreas.slice(0, 8).map((w) => w.topic),
+  };
+}
+
+/**
+ * @param {object} context - userPrompt, studyDomainIds, studyKeywords, onboardingQuizSummary, onboardingIntroAccuracy, domainLabels, performanceSnapshot
+ */
+export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLevel, context = {}) {
+  const weakF = filterLearningPathWeakAreas(weakAreas);
+  const histF = filterLearningPathQuizHistory(quizHistory);
+  const claudeKey = getClaudeApiKey();
+  const userMessage = buildLearningPathJsonPrompt(weakF, histF, currentLevel, context);
+
+  if (GEMINI_API_KEY) {
+    const tries = [
+      { temperature: 0.35, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      { temperature: 0.35, maxOutputTokens: 8192 },
+    ];
+    for (const gen of tries) {
+      try {
+        const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userMessage }] }],
+            generationConfig: gen,
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Gemini error ${response.status}`);
+        }
+
+        const result = await response.json();
+        const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const cleaned = text ? stripJsonFence(text) : '';
+        if (cleaned.length > 80) return cleaned;
+        throw new Error('Empty Gemini roadmap');
+      } catch (error) {
+        console.warn('Gemini learning path attempt failed:', error?.message || error);
+      }
+    }
   }
 
-  try {
-    const response = await fetch(CLAUDE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 900,
-        messages: [
-          {
-            role: 'user',
-            content: `Create a personalized study roadmap for a student.
+  if (claudeKey) {
+    try {
+      const response = await fetch(CLAUDE_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8192,
+          messages: [{ role: 'user', content: userMessage }],
+        }),
+      });
 
-${onboardingLine}${domainLine}${userAsk}Weak Areas (topic-level): ${JSON.stringify(weakAreas)}
-Recent quiz summaries: ${JSON.stringify(quizHistory.slice(-6).map((q) => ({
-              topic: q.topic,
-              subject: q.subject,
-              accuracy: q.accuracy,
-              correct: q.correctAnswers,
-              total: q.totalQuestions,
-            })))}
-Current Level: ${currentLevel}
+      if (!response.ok) throw new Error('API request failed');
 
-Return a structured roadmap with:
-1. A short motivational opener (1–2 sentences)
-2. Numbered phases (1., 2., 3., …) each with a title, 2–4 bullet actions, and rough time estimate
-3. One "fun challenge" to keep engagement
-4. Close with how to use CodeManthan quizzes to verify progress
-
-Keep tone upbeat and Gen-Z friendly but professional. No markdown tables.`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) throw new Error('API request failed');
-
-    const data = await response.json();
-    return data.content[0].text;
-  } catch (error) {
-    console.error('AI Learning Path error:', error);
-    return getFallbackLearningPath(weakAreas, context);
+      const data = await response.json();
+      return data.content[0].text;
+    } catch (error) {
+      console.error('Claude learning path error:', error);
+    }
   }
+
+  return getFallbackLearningPath(weakF, context);
 }
 
 /**
@@ -146,43 +307,229 @@ function getFallbackExplanation(question, correctAnswer, topic) {
     `Practice similar problems to strengthen your understanding! 💪`;
 }
 
+function dayBlock(focus, dayNum, titleSuffix, overview, seq, subs, actions = []) {
+  return {
+    day: dayNum,
+    title: `Day ${dayNum} — ${focus}: ${titleSuffix}`,
+    timeEstimate: '2–3 hours (adjust to your pace)',
+    overview,
+    studySequence: seq,
+    subtopics: subs.map((s) => ({
+      name: s.name,
+      detail: s.detail,
+      youtubeUrl: '',
+      youtubeSearchQuery: s.q,
+    })),
+    actions,
+  };
+}
+
+function buildOfflineSevenDayPlan(focus, sortedWeak, ctx) {
+  const { studyKeywords = '', userPrompt = '' } = ctx;
+  const isDsa = /dsa|data structure|algorithm|leetcode|cp |competitive programming/i.test(focus);
+  const weakLine =
+    sortedWeak.length > 0
+      ? `Spend extra time on weak areas: ${sortedWeak
+          .slice(0, 3)
+          .map((w) => `${w.topic} (~${w.accuracy}%)`)
+          .join(', ')}.`
+      : '';
+
+  if (isDsa) {
+    return [
+      dayBlock(focus, 1, 'Big-O, arrays & strings', `Map the DSA roadmap; nail complexity intuition and array/string patterns. ${weakLine}`, [
+        '20 min: skim syllabus; list 5 goals for the week.',
+        '40 min: Big-O cheatsheet — compare sorting and search costs.',
+        '45 min: two-pointer & sliding window on arrays; solve 3 tiny problems.',
+        '15 min: log mistakes in one page.',
+      ], [
+        {
+          name: 'Asymptotic notation',
+          detail: 'Understand best/average/worst; relate to real loop structures.',
+          q: `${focus} time complexity big O explained tutorial`,
+        },
+        {
+          name: 'Array patterns',
+          detail: 'Two pointers from both ends; sliding window for subarrays.',
+          q: `two pointer sliding window array ${focus} tutorial`,
+        },
+      ]),
+      dayBlock(focus, 2, 'Linked lists', 'Master singly/doubly lists, cycles, merges.', [
+        '30 min: visualize pointer updates on paper.',
+        '50 min: implement reverse, detect cycle (Floyd).',
+        '40 min: merge two sorted lists step-by-step.',
+      ], [
+        { name: 'List basics', detail: 'Dummy head trick; always draw before coding.', q: `linked list for beginners ${focus}` },
+        { name: 'Cycle detection', detail: 'Tortoise-hare — why it works.', q: `Floyd cycle detection linked list` },
+      ]),
+      dayBlock(focus, 3, 'Stacks, queues & hashing', 'FIFO/LIFO intuition; hash maps for O(1) lookups.', [
+        '35 min: stack for parentheses & monotonic stack intro.',
+        '35 min: queue & deque use-cases.',
+        '40 min: hash map frequency problems (2 classics).',
+      ], [
+        { name: 'Stack patterns', detail: 'Matching brackets; next greater element intro.', q: `stack data structure tutorial ${focus}` },
+        { name: 'Hashing', detail: 'Counting, anagrams, complement pairs.', q: `hash map coding problems tutorial` },
+      ]),
+      dayBlock(focus, 4, 'Trees (BST & traversals)', 'Recursion and traversals before harder tree DP.', [
+        '30 min: preorder/inorder/postorder — iterative + recursive.',
+        '50 min: BST search/insert; validate BST.',
+        '40 min: height, diameter, path sum intro.',
+      ], [
+        { name: 'Traversals', detail: 'Use explicit stack for iterative inorder.', q: `binary tree traversal tutorial` },
+        { name: 'BST properties', detail: 'Inorder of BST is sorted — use that invariant.', q: `BST basics ${focus}` },
+      ]),
+      dayBlock(focus, 5, 'Heaps & priority queues', 'Top-K, merge K lists mindset.', [
+        '35 min: min-heap vs max-heap API in your language.',
+        '45 min: K largest, merge K sorted.',
+        '40 min: scheduling / meeting rooms style problem.',
+      ], [
+        { name: 'Heap operations', detail: 'Heapify; when to prefer heap over sort.', q: `priority queue heap tutorial` },
+        { name: 'Top-K patterns', detail: 'Fixed-size heap vs quickselect tradeoffs.', q: `top k elements heap leetcode tutorial` },
+      ]),
+      dayBlock(focus, 6, 'Graphs BFS & DFS', 'Grid graphs and adjacency lists.', [
+        '40 min: BFS shortest path unweighted; DFS for components.',
+        '45 min: island / grid problems.',
+        '35 min: detect cycle in undirected graph (concept).',
+      ], [
+        { name: 'Graph representations', detail: 'Adjacency list vs matrix; when each wins.', q: `graph bfs dfs tutorial` },
+        { name: 'Grid Bishops/Island', detail: '4-direction flood fill pattern.', q: `number of islands bfs dfs tutorial` },
+      ]),
+      dayBlock(
+        focus,
+        7,
+        'Revision & timed set',
+        'Mixed drill; prioritize weak topics from CodeManthan history.',
+        [
+          '20 min: one-page formula / pattern sheet.',
+          '60 min: timed mixed set (5 problems, increasing difficulty).',
+          '30 min: retest weakest topic only.',
+          '10 min: plan next week.',
+        ],
+        [
+          { name: 'Spaced recap', detail: 'Redo 3 problems you missed earlier in the week without notes first.', q: `${focus} revision one shot` },
+          { name: 'Interview-style timed block', detail: '45 min hard stop; note where you stall.', q: `${focus} timed practice problems` },
+        ],
+        [weakLine || 'Take a CodeManthan quiz to refresh data, then regenerate with Gemini.'],
+      ),
+    ];
+  }
+
+  return [
+    dayBlock(focus, 1, 'Orientation', `Clarify outcomes for “${focus}” and gather resources.`, [
+      '25 min: define what “done” means for the week.',
+      '40 min: one trusted course or book chapter map.',
+      '30 min: vocabulary & terminology list.',
+    ], [
+      { name: 'Scope', detail: `List subtopics under ${focus} you must touch this week.`, q: `${focus} complete syllabus tutorial` },
+      { name: 'Baseline quiz', detail: 'Short self-test; note gaps (no grading stress).', q: `${focus} basics test` },
+    ]),
+    dayBlock(focus, 2, 'Core theory A', 'First major concept block in logical order.', [
+      '45 min: read + notes (active recall).',
+      '40 min: worked examples — cover to recreate.',
+      '25 min: 5 micro-questions.',
+    ], [
+      { name: 'Concept block A', detail: 'Teach-back: explain aloud without slides.', q: `${focus} lecture tutorial` },
+      { name: 'Worked examples', detail: 'Mimic solution structure, don’t copy symbols blindly.', q: `${focus} solved examples` },
+    ]),
+    dayBlock(focus, 3, 'Core theory B', 'Second concept layer; connect to Day 2.', [
+      '45 min: new material with linking diagrams.',
+      '40 min: pair related problems easy→medium.',
+    ], [
+      { name: 'Concept block B', detail: 'Draw one flowchart linking Day 2–3 ideas.', q: `${focus} intermediate tutorial` },
+      { name: 'Linking exercises', detail: 'Two problems that need both Day 2 and 3 ideas.', q: `${focus} practice problems medium` },
+    ]),
+    dayBlock(focus, 4, 'Drill & mistakes', 'Volume + error log.', [
+      '50 min: problem set; stop after each to log “why I missed”.',
+      '30 min: redo hardest item cold.',
+    ], [
+      { name: 'Mistake journal', detail: 'Tag errors: careless vs concept vs time.', q: `${focus} common mistakes` },
+      { name: 'Timed easy set', detail: 'Speed + accuracy before moving harder.', q: `${focus} timed quiz easy` },
+    ]),
+    dayBlock(focus, 5, 'Application / case study', 'Realistic scenario or past-paper chunk.', [
+      '60 min: one integrated task or multi-step question.',
+      '30 min: compare your approach to model answer.',
+    ], [
+      { name: 'Integrated task', detail: 'Simulate exam constraints if applicable.', q: `${focus} past paper solved` },
+      { name: 'Rubric check', detail: 'Score yourself on steps, not only final answer.', q: `${focus} exam strategy` },
+    ]),
+    dayBlock(focus, 6, 'Weak-area repair', `${sortedWeak.length ? 'Double down on quiz weak topics.' : 'Hardest subtopic second pass.'}`, [
+      '45 min: targeted notes on weakest subtopic.',
+      '45 min: 3 problems only in that subtopic.',
+    ], [
+      {
+        name: 'Targeted repair',
+        detail: sortedWeak[0]
+          ? `Focus: ${sortedWeak[0].topic} — rebuild from definitions.`
+          : `Pick hardest idea from Days 2–5 and restart from a simpler example.`,
+        q: sortedWeak[0] ? `${sortedWeak[0].topic} tutorial` : `${focus} hardest concepts explained`,
+      },
+      {
+        name: 'Verification',
+        detail: 'Explain the fix to a friend in 3 minutes.',
+        q: `${focus} revision tricks`,
+      },
+    ]),
+    dayBlock(
+      focus,
+      7,
+      'Review & next week',
+      'Consolidate; schedule spaced repetition.',
+      [
+        '30 min flash summary of all 6 days.',
+        '45 min mixed review set.',
+        '15 min schedule two revisit slots next week.',
+      ],
+      [
+        { name: 'One-pager', detail: 'Single sheet: formulas, pitfalls, algorithms.', q: `${focus} one shot revision` },
+        { name: 'Forward plan', detail: 'Set next milestone beyond day 7.', q: `${studyKeywords || focus} study planner` },
+      ],
+      [userPrompt.trim() ? `Remember your stated goal: ${userPrompt.trim().slice(0, 120)}` : ''],
+    ),
+  ];
+}
+
 /**
  * Fallback learning path when API is not available
  */
 function getFallbackLearningPath(weakAreas, context = {}) {
-  const { userPrompt = '', onboardingQuizSummary = '', studyKeywords = '' } = context;
+  const {
+    userPrompt = '',
+    onboardingQuizSummary = '',
+    studyKeywords = '',
+    onboardingIntroAccuracy = null,
+    performanceSnapshot = null,
+    domainLabels = [],
+  } = context;
 
-  let plan = `🚀 **Your roadmap**\n\n`;
-  if (onboardingQuizSummary) {
-    plan += `Starting from your first quiz: ${onboardingQuizSummary}\n\n`;
+  const primaryFocus = resolvePrimaryStudyTopic(context) || studyKeywords.split(/[,;]/)[0]?.trim() || 'your topic';
+  const sorted = weakAreas?.length ? [...weakAreas].sort((a, b) => a.accuracy - b.accuracy) : [];
+  const sevenDayPlan = buildOfflineSevenDayPlan(primaryFocus, sorted, context);
+
+  const summaryBits = [
+    `Seven-day sequence for “${primaryFocus}” (offline template). Add VITE_GEMINI_API_KEY for a tailored Gemini plan.`,
+  ];
+  if (onboardingQuizSummary) summaryBits.push(onboardingQuizSummary);
+  if (studyKeywords) summaryBits.push(`Keywords: ${studyKeywords}.`);
+  if (domainLabels.length) summaryBits.push(`Domains: ${domainLabels.join(', ')}.`);
+  if (typeof onboardingIntroAccuracy === 'number') {
+    summaryBits.push(`Onboarding quiz ~${onboardingIntroAccuracy}%`);
   }
-  if (studyKeywords) {
-    plan += `You said you care about: ${studyKeywords}\n\n`;
-  }
-  if (userPrompt.trim()) {
-    plan += `Your ask: "${userPrompt.trim()}"\n\n`;
+  if (performanceSnapshot?.overallAccuracy != null) {
+    summaryBits.push(
+      `Library quizzes: ~${performanceSnapshot.overallAccuracy}% overall across ${performanceSnapshot.totalQuizzes || 0} attempts.`,
+    );
   }
 
-  if (!weakAreas || weakAreas.length === 0) {
-    plan += `You're doing well on tracked topics. Keep mixing domains, try harder quizzes, and use the prompt above whenever your goals shift.\n`;
-    return plan;
-  }
-
-  const sorted = [...weakAreas].sort((a, b) => a.accuracy - b.accuracy);
-
-  plan += `**Phased plan**\n\n`;
-  sorted.slice(0, 5).forEach((area, index) => {
-    const priority = index === 0 ? '🔥' : index === 1 ? '⚡' : '✨';
-    const time = area.accuracy < 40 ? '45–60 min' : area.accuracy < 60 ? '30–45 min' : '15–30 min';
-    plan += `${index + 1}. ${priority} **${area.topic}** (${area.subject})\n`;
-    plan += `   • Accuracy ~${area.accuracy}% — spend ${time} on fundamentals\n`;
-    plan += `   • Mini-quiz after revision to lock it in\n\n`;
+  return JSON.stringify({
+    primaryTopic: primaryFocus,
+    summary: summaryBits.join(' '),
+    diagramDescription: `Seven stops: Day 1 through Day 7 for ${primaryFocus}; move the car after finishing each day’s sequence.`,
+    diagramMermaid:
+      'flowchart LR\n D1[Day1] --> D2[Day2] --> D3[Day3] --> D4[Day4] --> D5[Day5] --> D6[Day6] --> D7[Day7]',
+    sevenDayPlan,
+    funChallenge: `Whiteboard ${primaryFocus}: teach Day 1–3 content in 6 minutes without notes.`,
+    quizReminder: 'Use CodeManthan topic quizzes after Days 3, 5, and 7 to validate retention.',
   });
-
-  plan += `🎮 **Fun challenge:** Teach one concept from your weakest topic to a friend in 2 minutes — gaps show up fast.\n`;
-  plan += `\n💡 Re-run this roadmap after your next few quizzes so it stays fresh.`;
-
-  return plan;
 }
 
 /**

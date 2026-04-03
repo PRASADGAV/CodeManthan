@@ -3,8 +3,12 @@
  * Uses Gemini when VITE_GEMINI_API_KEY is set; otherwise a built-in fallback bank.
  */
 
+import quizData from '../data/quizData.js';
+
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+const LIBRARY_SUBJECT_NAMES = Object.keys(quizData);
 
 export const STUDY_DOMAIN_OPTIONS = [
   { id: 'engineering', label: 'Engineering', emoji: '⚙️', hint: 'STEM, tech, mechanics, coding mindset' },
@@ -279,4 +283,68 @@ export function computeDomainStats(questions, answersByIndex) {
     scoresPct[d] = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
   });
   return { domainStats: stats, domainScoresPct: scoresPct };
+}
+
+/**
+ * AI suggestions for what to review next, based on quiz performance and onboarding context.
+ * @param {object} context — compact stats + user fields (studyDomains[], studyKeywords, onboardingQuizSummary, onboardingDomainScores, weakAreas, domainWeakAreas, subjectAccuracy, overallAccuracy, totalQuizzes)
+ * @returns {Promise<{ summary: string, topics: Array<{ name: string, reason: string }>, source: 'gemini' } | null>}
+ */
+export async function generateReviewSuggestionsFromQuiz(context) {
+  if (!GEMINI_API_KEY) return null;
+
+  const prompt = `You are a concise study coach for a quiz app.
+
+STUDENT CONTEXT (JSON):
+${JSON.stringify(context)}
+
+IN-APP LIBRARY SUBJECTS (use exact names when recommending a quiz track): ${LIBRARY_SUBJECT_NAMES.join(', ')}
+
+TASK:
+1. Write one short encouraging summary sentence (max 25 words) about their learning trajectory.
+2. Suggest exactly 4 specific topics or subtopics to review next. Prioritize weak areas and gaps. Align with their chosen domains/keywords when relevant. Prefer tying 1–2 items to the library subjects above when it fits.
+
+Return ONLY valid JSON (no markdown):
+{"summary":"...","topics":[{"name":"short label","reason":"one clear sentence"}]}`;
+
+  try {
+    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `Gemini error ${response.status}`);
+    }
+
+    const result = await response.json();
+    const responseText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) throw new Error('Empty AI response');
+
+    const data = parseGeminiJson(responseText);
+    const topics = Array.isArray(data.topics) ? data.topics : [];
+    const normalized = topics
+      .map((t) => ({
+        name: String(t.name || t.topic || '').trim(),
+        reason: String(t.reason || t.detail || '').trim(),
+      }))
+      .filter((t) => t.name && t.reason)
+      .slice(0, 6);
+
+    if (normalized.length === 0) throw new Error('No topics in AI response');
+
+    return {
+      summary: String(data.summary || '').trim() || 'Here are focused topics to review from your recent quiz data.',
+      topics: normalized,
+      source: 'gemini',
+    };
+  } catch (e) {
+    console.warn('Gemini review suggestions failed:', e);
+    return null;
+  }
 }
