@@ -1,11 +1,25 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LuArrowRight, LuSparkles, LuTarget, LuBrain, LuTrendingUp, LuBookOpen, LuUsers, LuZap } from 'react-icons/lu';
+import { LuArrowRight, LuSparkles, LuTarget, LuBrain, LuTrendingUp, LuBookOpen, LuUsers, LuZap, LuX, LuGraduationCap, LuUser } from 'react-icons/lu';
+import { useAuth } from '../context/AuthContext';
 import './Landing.css';
 
 export default function Landing() {
   const vantaRef = useRef(null);
   const vantaEffect = useRef(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState('login');
+  const [selectedRole, setSelectedRole] = useState(null);
+  const { login, register } = useAuth();
+
+  const openAuthModal = (tab) => {
+    setAuthTab(tab);
+    setShowAuthModal(true);
+  };
+
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+  };
 
   useEffect(() => {
     // Initialize Vanta Globe
@@ -71,8 +85,8 @@ export default function Landing() {
             <span className="logo-text-landing">CodeManthan</span>
           </div>
           <div className="landing-nav-actions">
-            <Link to="/login" className="btn btn-secondary" id="nav-login-btn">Sign In</Link>
-            <Link to="/register" className="btn btn-primary" id="nav-register-btn">Get Started</Link>
+            <button className="btn btn-secondary" id="nav-login-btn" onClick={() => openAuthModal('login')}>Sign In</button>
+            <button className="btn btn-primary" id="nav-register-btn" onClick={() => openAuthModal('register')}>Get Started</button>
           </div>
         </nav>
 
@@ -90,13 +104,13 @@ export default function Landing() {
             discover your weak areas, and get AI-generated study paths — all in one platform.
           </p>
           <div className="hero-actions">
-            <Link to="/register" className="btn btn-primary btn-lg" id="hero-get-started">
+            <button className="btn btn-primary btn-lg" id="hero-get-started" onClick={() => openAuthModal('register')}>
               Start Learning Free
               <LuArrowRight />
-            </Link>
-            <Link to="/login" className="btn btn-secondary btn-lg" id="hero-login">
+            </button>
+            <button className="btn btn-secondary btn-lg" id="hero-login" onClick={() => openAuthModal('login')}>
               Sign In
-            </Link>
+            </button>
           </div>
 
           <div className="hero-stats">
@@ -178,9 +192,9 @@ export default function Landing() {
             <div className="cta-content">
               <h2>Ready to Transform Your Learning?</h2>
               <p>Join CodeManthan today and experience AI-powered personalized education.</p>
-              <Link to="/register" className="btn btn-primary btn-lg" id="cta-register">
+              <button className="btn btn-primary btn-lg" id="cta-register" onClick={() => openAuthModal('register')}>
                 Get Started Now <LuArrowRight />
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -201,8 +215,8 @@ export default function Landing() {
             <div className="footer-links">
               <div>
                 <h4>Platform</h4>
-                <Link to="/register">Get Started</Link>
-                <Link to="/login">Sign In</Link>
+                <button onClick={() => openAuthModal('register')}>Get Started</button>
+                <button onClick={() => openAuthModal('login')}>Sign In</button>
               </div>
               <div>
                 <h4>Features</h4>
@@ -217,6 +231,119 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* Glass Morphism Auth Modal */}
+      {showAuthModal && (
+        <div className="auth-modal-overlay" onClick={closeAuthModal}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="auth-modal-close" onClick={closeAuthModal}>
+              <LuX />
+            </button>
+            <div className="auth-modal-tabs">
+              <button 
+                className={`auth-tab ${authTab === 'login' ? 'active' : ''}`}
+                onClick={() => setAuthTab('login')}
+              >
+                Sign In
+              </button>
+              <button 
+                className={`auth-tab ${authTab === 'register' ? 'active' : ''}`}
+                onClick={() => setAuthTab('register')}
+              >
+                Sign Up
+              </button>
+            </div>
+            
+            {!selectedRole ? (
+              <div className="role-selection">
+                <h3>Choose your role</h3>
+                <p className="role-subtitle">Select how you want to use CodeManthan</p>
+                <div className="role-buttons">
+                  <button 
+                    className="role-btn"
+                    onClick={() => setSelectedRole('student')}
+                  >
+                    <LuGraduationCap className="role-icon" />
+                    <span>Student</span>
+                    <p className="role-desc">Take quizzes, track progress, and learn AI-powered study paths</p>
+                  </button>
+                  <button 
+                    className="role-btn"
+                    onClick={() => setSelectedRole('educator')}
+                  >
+                    <LuUser className="role-icon" />
+                    <span>Teacher</span>
+                    <p className="role-desc">Create quizzes, view analytics, and manage your classroom</p>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="auth-modal-content">
+                <button className="back-role-btn" onClick={() => setSelectedRole(null)}>
+                  ← Back to role selection
+                </button>
+                {authTab === 'login' ? (
+                  <form className="auth-form" onSubmit={(e) => { 
+                    e.preventDefault(); 
+                    const form = e.target;
+                    const email = form.email.value;
+                    const password = form.password.value;
+                    const success = login(email, password);
+                    if (success) {
+                      closeAuthModal();
+                      window.location.href = '/dashboard';
+                    }
+                  }}>
+                    <div className="form-group">
+                      <label>Email</label>
+                      <input name="email" type="email" placeholder="Enter your email" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Password</label>
+                      <input name="password" type="password" placeholder="Enter your password" required />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-full">
+                      Sign In as {selectedRole === 'student' ? 'Student' : 'Teacher'}
+                    </button>
+                  </form>
+                ) : (
+                  <form className="auth-form" onSubmit={(e) => { 
+                    e.preventDefault(); 
+                    const form = e.target;
+                    const userData = {
+                      name: form.name.value,
+                      email: form.email.value,
+                      password: form.password.value,
+                      role: selectedRole,
+                    };
+                    const success = register(userData);
+                    if (success) {
+                      closeAuthModal();
+                      window.location.href = '/dashboard';
+                    }
+                  }}>
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input name="name" type="text" placeholder="Enter your name" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Email</label>
+                      <input name="email" type="email" placeholder="Enter your email" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Password</label>
+                      <input name="password" type="password" placeholder="Create a password" required />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-full">
+                      Create {selectedRole === 'student' ? 'Student' : 'Teacher'} Account
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

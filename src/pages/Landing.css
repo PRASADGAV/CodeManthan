@@ -157,8 +157,8 @@
 .footer-links { display: flex; gap: var(--s16); }
 .footer-links div { display: flex; flex-direction: column; gap: var(--s3); }
 .footer-links h4 { font-size: 0.78rem; font-weight: 600; color: var(--text); margin-bottom: var(--s2); }
-.footer-links a, .footer-links span { font-size: 0.82rem; color: var(--text-secondary); }
-.footer-links a:hover { color: var(--accent); }
+.footer-links a, .footer-links span, .footer-links button { font-size: 0.82rem; color: var(--text-secondary); background: none; border: none; cursor: pointer; text-align: left; }
+.footer-links a:hover, .footer-links button:hover { color: var(--accent); }
 .footer-bottom { text-align: center; padding-top: var(--s8); border-top: 1px solid var(--border); }
 .footer-bottom p { font-size: 0.75rem; color: var(--text-muted); }
 
@@ -169,4 +169,136 @@
   .hero-stat-divider { display: none; }
   .features-grid, .steps-grid { grid-template-columns: 1fr; }
   .footer-content { flex-direction: column; gap: var(--s8); }
+}
+
+/* ═══ Glass Morphism Auth Modal ═══ */
+.auth-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.auth-modal {
+  position: relative;
+  width: 100%; max-width: 400px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--r-2xl);
+  padding: var(--s10);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease-out;
+}
+
+.auth-modal-close {
+  position: absolute; top: var(--s4); right: var(--s4);
+  background: rgba(255, 255, 255, 0.08);
+  border: none; border-radius: var(--r-full);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--sand-400); cursor: pointer;
+  transition: all var(--dur-base) var(--ease-out);
+}
+.auth-modal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.auth-modal-tabs {
+  display: flex; gap: var(--s2);
+  margin-bottom: var(--s8);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--r-lg);
+  padding: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: var(--s3) var(--s4);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--sand-400);
+  cursor: pointer;
+  transition: all var(--dur-base) var(--ease-out);
+}
+
+.auth-tab.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.auth-tab:hover:not(.active) {
+  color: var(--sand-300);
+}
+
+.auth-form { display: flex; flex-direction: column; gap: var(--s5); }
+
+.form-group { display: flex; flex-direction: column; gap: var(--s2); }
+
+.form-group label {
+  font-size: 0.85rem; font-weight: 500;
+  color: var(--sand-300);
+}
+
+.form-group input {
+  padding: var(--s3) var(--s4);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-lg);
+  font-size: 0.95rem; color: white;
+  outline: none; transition: all var(--dur-base) var(--ease-out);
+}
+
+.form-group input::placeholder { color: var(--sand-500); }
+
+.form-group input:focus {
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.btn-full { width: 100%; }
+
+.role-selection { text-align: center; }
+.role-selection h3 { font-size: 1.25rem; font-weight: 600; color: white; margin-bottom: var(--s2); }
+.role-subtitle { font-size: 0.9rem; color: var(--sand-400); margin-bottom: var(--s8); }
+.role-buttons { display: flex; flex-direction: column; gap: var(--s4); }
+.role-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--s2); padding: var(--s5);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-xl);
+  cursor: pointer; transition: all var(--dur-base) var(--ease-out);
+  text-align: center;
+}
+.role-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.role-icon { font-size: 2rem; color: var(--accent); }
+.role-btn span { font-size: 1.1rem; font-weight: 600; color: white; }
+.role-desc { font-size: 0.8rem; color: var(--sand-400); margin: 0; }
+
+.back-role-btn {
+  background: none; border: none; color: var(--sand-400);
+  font-size: 0.85rem; cursor: pointer; margin-bottom: var(--s4);
+  transition: color var(--dur-base) var(--ease-out);
+}
+.back-role-btn:hover { color: white; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
