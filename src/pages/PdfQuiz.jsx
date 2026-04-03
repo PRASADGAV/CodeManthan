@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { generateQuizFromPdf } from '../services/pdfQuizService';
 import {
   LuUpload, LuFileText, LuX, LuLoader, LuCircleCheck, LuCircleX,
   LuArrowRight, LuRotateCcw, LuSparkles, LuGauge, LuHash, LuBrain,
 } from 'react-icons/lu';
+import { LuLayoutDashboard } from 'react-icons/lu';
 import './PdfQuiz.css';
 
 // ── Flow steps ──
@@ -15,6 +17,7 @@ const STEPS = {
 };
 
 export default function PdfQuiz() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(STEPS.UPLOAD);
   const [file, setFile] = useState(null);
   const [config, setConfig] = useState({ numQuestions: 5, difficulty: 'medium', quizType: 'mcq' });
@@ -362,6 +365,9 @@ export default function PdfQuiz() {
                 <div className="pq-result-actions">
                   <button className="btn btn-primary btn-lg" onClick={restart}>
                     <LuRotateCcw /> Generate New Quiz
+                  </button>
+                  <button className="btn btn-secondary btn-lg" onClick={() => navigate('/dashboard')}>
+                    <LuLayoutDashboard /> Back to Dashboard
                   </button>
                 </div>
               </>

@@ -128,16 +128,16 @@ export default function QuizPlay() {
       </div>
 
       {/* Question Card */}
-      <div className="quiz-question-card animate-scaleIn" key={currentQuestionIndex}>
-        <div className="question-difficulty-badge" style={{ color: difficultyColors[currentQuestion.difficulty] }}>
+      <div className="question-card animate-scaleIn" key={currentQuestionIndex}>
+        <div className="question-difficulty" style={{ color: difficultyColors[currentQuestion.difficulty] }}>
           {currentQuestion.difficulty.toUpperCase()}
         </div>
-        <h2 className="quiz-question-text">{currentQuestion.question}</h2>
+        <h2 className="question-text">{currentQuestion.question}</h2>
 
         {/* Options */}
-        <div className="quiz-options">
+        <div className="options-list">
           {currentQuestion.options.map((option, idx) => {
-            let optionClass = 'quiz-option';
+            let optionClass = 'option-btn';
             if (showFeedback) {
               if (idx === currentQuestion.correct) optionClass += ' correct';
               else if (idx === selected && idx !== currentQuestion.correct) optionClass += ' incorrect';
@@ -168,7 +168,7 @@ export default function QuizPlay() {
 
         {/* Feedback */}
         {showFeedback && (
-          <div className={`quiz-feedback ${isCorrect ? 'feedback-correct' : 'feedback-incorrect'}`}>
+          <div className={`answer-feedback ${isCorrect ? 'correct-feedback' : 'incorrect-feedback'}`}>
             <div className="feedback-header">
               {isCorrect ? (
                 <>
@@ -190,7 +190,7 @@ export default function QuizPlay() {
         {/* Submit Button */}
         {!showFeedback && (
           <button
-            className="btn btn-primary btn-lg quiz-submit-btn"
+            className="btn btn-primary btn-lg next-btn"
             onClick={handleSubmit}
             disabled={selected === null}
             id="submit-answer-btn"

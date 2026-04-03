@@ -67,6 +67,7 @@ export async function getPerformanceData(uid) {
       overallAccuracy: 0,
       topicAccuracy: {},
       subjectAccuracy: {},
+      domainAccuracy: {},
       difficultyBreakdown: {
         easy: { correct: 0, total: 0 },
         medium: { correct: 0, total: 0 },
@@ -76,6 +77,8 @@ export async function getPerformanceData(uid) {
       weakAreas: [],
       strongAreas: [],
       topicPerformance: [],
+      domainWeakAreas: [],
+      domainPerformance: [],
     };
   }
 
@@ -83,6 +86,7 @@ export async function getPerformanceData(uid) {
   let totalQuestions = 0;
   const topicAccuracy = {};
   const subjectAccuracy = {};
+  const domainAccuracy = {};
   const difficultyBreakdown = {
     easy: { correct: 0, total: 0 },
     medium: { correct: 0, total: 0 },
@@ -111,6 +115,16 @@ export async function getPerformanceData(uid) {
       difficultyBreakdown[quiz.difficulty].correct += quiz.correctAnswers || 0;
       difficultyBreakdown[quiz.difficulty].total += quiz.totalQuestions || 0;
     }
+
+    if (quiz.domainStats && typeof quiz.domainStats === 'object') {
+      Object.entries(quiz.domainStats).forEach(([domain, v]) => {
+        const cor = typeof v?.correct === 'number' ? v.correct : 0;
+        const tot = typeof v?.total === 'number' ? v.total : 0;
+        if (!domainAccuracy[domain]) domainAccuracy[domain] = { correct: 0, total: 0 };
+        domainAccuracy[domain].correct += cor;
+        domainAccuracy[domain].total += tot;
+      });
+    }
   });
 
   const topicPerformance = Object.entries(topicAccuracy).map(([topic, data]) => ({
@@ -121,6 +135,13 @@ export async function getPerformanceData(uid) {
 
   const weakAreas = topicPerformance.filter((t) => t.accuracy < 60).sort((a, b) => a.accuracy - b.accuracy);
   const strongAreas = topicPerformance.filter((t) => t.accuracy >= 80).sort((a, b) => b.accuracy - a.accuracy);
+
+  const domainPerformance = Object.entries(domainAccuracy).map(([topic, data]) => ({
+    topic,
+    accuracy: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+    total: data.total,
+  }));
+  const domainWeakAreas = domainPerformance.filter((t) => t.accuracy < 60 && t.total > 0).sort((a, b) => a.accuracy - b.accuracy);
 
   const recentTrend = history.slice(-10).map((quiz, idx) => ({
     quiz: idx + 1,
@@ -136,11 +157,14 @@ export async function getPerformanceData(uid) {
     overallAccuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
     topicAccuracy,
     subjectAccuracy,
+    domainAccuracy,
     difficultyBreakdown,
     recentTrend,
     weakAreas,
     strongAreas,
     topicPerformance,
+    domainWeakAreas,
+    domainPerformance,
   };
 }
 
@@ -237,4 +261,31 @@ export async function getClassStudents(classCode) {
 
 export async function getStudentPerformance(studentId) {
   return getPerformanceData(studentId);
+}
+
+// ===== Intro Quiz (First-time onboarding) =====
+
+export async function saveIntroQuizResult(uid, payload) {
+  const {
+    score,
+    totalQuestions,
+    selectedSubject,
+    studyDomainIds,
+    studyKeywords,
+    onboardingDomainScores,
+    onboardingQuizSummary,
+  } = payload;
+
+  const updatePayload = {
+    introQuizCompleted: true,
+    introQuizScore: score,
+    introQuizTotal: totalQuestions,
+  };
+  if (selectedSubject !== undefined) updatePayload.selectedSubject = selectedSubject;
+  if (studyDomainIds !== undefined) updatePayload.studyDomainIds = studyDomainIds;
+  if (studyKeywords !== undefined) updatePayload.studyKeywords = studyKeywords;
+  if (onboardingDomainScores !== undefined) updatePayload.onboardingDomainScores = onboardingDomainScores;
+  if (onboardingQuizSummary !== undefined) updatePayload.onboardingQuizSummary = onboardingQuizSummary;
+
+  await update(ref(db, `users/${uid}`), updatePayload);
 }

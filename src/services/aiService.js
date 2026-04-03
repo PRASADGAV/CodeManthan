@@ -62,13 +62,31 @@ Keep it concise and student-friendly.`
 }
 
 /**
- * Generate an adaptive learning path based on student's weak areas and quiz history
+ * @param {object} context - Optional: userPrompt, studyDomainIds, studyKeywords, onboardingQuizSummary
  */
-export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLevel) {
+export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLevel, context = {}) {
   const apiKey = getApiKey();
-  
+  const {
+    userPrompt = '',
+    studyDomainIds = [],
+    studyKeywords = '',
+    onboardingQuizSummary = '',
+  } = context;
+
+  const domainLine = studyDomainIds.length
+    ? `Student-chosen domains (IDs): ${studyDomainIds.join(', ')}. Keywords they care about: ${studyKeywords || '(none)'}.\n`
+    : '';
+
+  const onboardingLine = onboardingQuizSummary
+    ? `First personalized onboarding quiz insight: ${onboardingQuizSummary}\n`
+    : '';
+
+  const userAsk = userPrompt.trim()
+    ? `The student wrote this request for their roadmap: "${userPrompt.trim()}"\nPrioritize aligning the plan with this.\n`
+    : '';
+
   if (!apiKey) {
-    return getFallbackLearningPath(weakAreas);
+    return getFallbackLearningPath(weakAreas, context);
   }
 
   try {
@@ -81,35 +99,41 @@ export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLev
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 900,
         messages: [
           {
             role: 'user',
-            content: `Based on a student's learning data, create a personalized study plan.
+            content: `Create a personalized study roadmap for a student.
 
-Weak Areas: ${JSON.stringify(weakAreas)}
-Recent Performance: ${JSON.stringify(quizHistory.slice(-5))}
+${onboardingLine}${domainLine}${userAsk}Weak Areas (topic-level): ${JSON.stringify(weakAreas)}
+Recent quiz summaries: ${JSON.stringify(quizHistory.slice(-6).map((q) => ({
+              topic: q.topic,
+              subject: q.subject,
+              accuracy: q.accuracy,
+              correct: q.correctAnswers,
+              total: q.totalQuestions,
+            })))}
 Current Level: ${currentLevel}
 
-Please provide a structured study plan with:
-1. Priority topics to focus on (ranked by weakness)
-2. Recommended study order
-3. Estimated time for each topic
-4. Specific tips for improvement
+Return a structured roadmap with:
+1. A short motivational opener (1–2 sentences)
+2. Numbered phases (1., 2., 3., …) each with a title, 2–4 bullet actions, and rough time estimate
+3. One "fun challenge" to keep engagement
+4. Close with how to use CodeManthan quizzes to verify progress
 
-Format as a clear, actionable plan. Keep it concise.`
-          }
-        ]
-      })
+Keep tone upbeat and Gen-Z friendly but professional. No markdown tables.`,
+          },
+        ],
+      }),
     });
 
     if (!response.ok) throw new Error('API request failed');
-    
+
     const data = await response.json();
     return data.content[0].text;
   } catch (error) {
     console.error('AI Learning Path error:', error);
-    return getFallbackLearningPath(weakAreas);
+    return getFallbackLearningPath(weakAreas, context);
   }
 }
 
@@ -125,31 +149,38 @@ function getFallbackExplanation(question, correctAnswer, topic) {
 /**
  * Fallback learning path when API is not available
  */
-function getFallbackLearningPath(weakAreas) {
+function getFallbackLearningPath(weakAreas, context = {}) {
+  const { userPrompt = '', onboardingQuizSummary = '', studyKeywords = '' } = context;
+
+  let plan = `🚀 **Your roadmap**\n\n`;
+  if (onboardingQuizSummary) {
+    plan += `Starting from your first quiz: ${onboardingQuizSummary}\n\n`;
+  }
+  if (studyKeywords) {
+    plan += `You said you care about: ${studyKeywords}\n\n`;
+  }
+  if (userPrompt.trim()) {
+    plan += `Your ask: "${userPrompt.trim()}"\n\n`;
+  }
+
   if (!weakAreas || weakAreas.length === 0) {
-    return `🎉 Great job! You're doing well across all topics. Keep practicing to maintain your skills. Try attempting harder difficulty levels to challenge yourself!`;
+    plan += `You're doing well on tracked topics. Keep mixing domains, try harder quizzes, and use the prompt above whenever your goals shift.\n`;
+    return plan;
   }
 
   const sorted = [...weakAreas].sort((a, b) => a.accuracy - b.accuracy);
-  
-  let plan = `📋 **Your Personalized Study Plan**\n\n`;
-  plan += `Based on your quiz performance, here are your recommended focus areas:\n\n`;
-  
-  sorted.forEach((area, index) => {
-    const priority = index === 0 ? '🔴 HIGH' : index === 1 ? '🟡 MEDIUM' : '🟢 LOW';
-    const time = area.accuracy < 40 ? '45-60 min' : area.accuracy < 60 ? '30-45 min' : '15-30 min';
-    
-    plan += `**${index + 1}. ${area.topic}** (${area.subject}) - ${priority} Priority\n`;
-    plan += `   • Current Accuracy: ${area.accuracy}%\n`;
-    plan += `   • Recommended Study Time: ${time}\n`;
-    plan += `   • Focus on: Review fundamentals, practice ${area.accuracy < 40 ? 'easy' : 'medium'} level questions first\n\n`;
+
+  plan += `**Phased plan**\n\n`;
+  sorted.slice(0, 5).forEach((area, index) => {
+    const priority = index === 0 ? '🔥' : index === 1 ? '⚡' : '✨';
+    const time = area.accuracy < 40 ? '45–60 min' : area.accuracy < 60 ? '30–45 min' : '15–30 min';
+    plan += `${index + 1}. ${priority} **${area.topic}** (${area.subject})\n`;
+    plan += `   • Accuracy ~${area.accuracy}% — spend ${time} on fundamentals\n`;
+    plan += `   • Mini-quiz after revision to lock it in\n\n`;
   });
 
-  plan += `\n💡 **Tips:**\n`;
-  plan += `• Start with your weakest topic and work your way up\n`;
-  plan += `• Take a quiz after studying each topic to measure improvement\n`;
-  plan += `• Use the recommended resources for each topic\n`;
-  plan += `• Aim for at least 70% accuracy before moving to the next topic`;
+  plan += `🎮 **Fun challenge:** Teach one concept from your weakest topic to a friend in 2 minutes — gaps show up fast.\n`;
+  plan += `\n💡 Re-run this roadmap after your next few quizzes so it stays fresh.`;
 
   return plan;
 }

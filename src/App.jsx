@@ -11,6 +11,7 @@ import LearningPath from './pages/LearningPath';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import PdfQuiz from './pages/PdfQuiz';
+import SubjectSelectModal from './components/SubjectSelectModal';
 
 function ProtectedRoute({ children, roles }) {
   const { isAuthenticated, user } = useAuth();
@@ -23,7 +24,7 @@ function ProtectedRoute({ children, roles }) {
 }
 
 function App() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -35,7 +36,9 @@ function App() {
   }
 
   return (
-    <Routes>
+    <>
+      {isAuthenticated && user && !user.introQuizCompleted && <SubjectSelectModal />}
+      <Routes>
       {/* Public routes */}
       <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />} />
 
@@ -96,6 +99,7 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
 

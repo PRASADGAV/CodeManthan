@@ -1,10 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getPerformanceData, getQuizHistory } from '../services/storageService';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTrendingUp, LuTriangleAlert, LuArrowRight, LuRoute, LuLoader } from 'react-icons/lu';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+} from 'recharts';
+import {
+  LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTrendingUp, LuTriangleAlert, LuRoute,
+  LuLoader, LuSparkles, LuCompass, LuLightbulb, LuCircleCheck,
+} from 'react-icons/lu';
+import {
+  getSkillRadarRows,
+  getDomainRadarRows,
+  getGuidanceSteps,
+  getImprovementSuggestions,
+} from '../utils/dashboardInsights';
 import './Dashboard.css';
+
+function RadarSkillTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  let detail = 'Not practiced yet — take a quiz';
+  if (row.baselineOnly) detail = `${row.accuracy}% · baseline from your first quiz`;
+  else if (row.practiced) detail = `${row.accuracy}% accuracy`;
+  return (
+    <div className="sd-chart-tooltip">
+      <strong>{row.skill}</strong>
+      <span>{detail}</span>
+    </div>
+  );
+}
+
+const defaultPerformance = {
+  totalQuizzes: 0,
+  totalQuestions: 0,
+  totalCorrect: 0,
+  overallAccuracy: 0,
+  topicAccuracy: {},
+  subjectAccuracy: {},
+  difficultyBreakdown: {
+    easy: { correct: 0, total: 0 },
+    medium: { correct: 0, total: 0 },
+    hard: { correct: 0, total: 0 },
+  },
+  recentTrend: [],
+  weakAreas: [],
+  strongAreas: [],
+  topicPerformance: [],
+  domainAccuracy: {},
+  domainWeakAreas: [],
+  domainPerformance: [],
+};
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -24,29 +71,57 @@ export default function StudentDashboard() {
         setHistory(hist);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
-        setPerformance({
-          totalQuizzes: 0, totalQuestions: 0, totalCorrect: 0,
-          overallAccuracy: 0, topicAccuracy: {}, subjectAccuracy: {},
-          difficultyBreakdown: { easy: { correct: 0, total: 0 }, medium: { correct: 0, total: 0 }, hard: { correct: 0, total: 0 } },
-          recentTrend: [], weakAreas: [], strongAreas: [], topicPerformance: [],
-        });
+        setPerformance(defaultPerformance);
         setHistory([]);
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [user?.id]);
+  }, [user?.id, user?.introQuizCompleted, user?.studyDomainIds, user?.studyKeywords, user?.onboardingQuizSummary, user?.onboardingDomainScores]);
+
+  const skillRadarRows = useMemo(
+    () => getSkillRadarRows(performance?.subjectAccuracy),
+    [performance?.subjectAccuracy],
+  );
+
+  const domainRadarRows = useMemo(
+    () => getDomainRadarRows(user, performance) ?? [],
+    [user, performance],
+  );
+  const showDomainRadar = domainRadarRows.length > 0;
+
+  const guidanceSteps = useMemo(
+    () => (performance ? getGuidanceSteps(performance, user) : []),
+    [performance, user],
+  );
+
+  const suggestions = useMemo(
+    () => (performance ? getImprovementSuggestions(performance) : []),
+    [performance],
+  );
+
+  const practicedSkills = useMemo(
+    () => skillRadarRows.filter((r) => r.practiced).length,
+    [skillRadarRows],
+  );
+
+  const practicedDomains = useMemo(
+    () => domainRadarRows.filter((r) => r.practiced || r.baselineOnly).length,
+    [domainRadarRows],
+  );
 
   if (loading || !performance) {
     return (
-      <div className="dashboard animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+      <div className="dashboard sd-dashboard sd-dashboard--loading animate-fadeIn">
+        <LuLoader className="pq-spin sd-loader" aria-hidden />
+        <p className="sd-loader-text">Loading your insights…</p>
       </div>
     );
   }
 
-  // Chart data
+  const hasQuizActivity = performance.totalQuizzes > 0;
+
   const trendData = performance.recentTrend;
 
   const subjectData = Object.entries(performance.subjectAccuracy || {}).map(([subject, data]) => ({
@@ -61,174 +136,305 @@ export default function StudentDashboard() {
     accuracy: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
   }));
 
-  const radarData = (performance.topicPerformance || []).slice(0, 8).map(t => ({
-    topic: t.topic.split(' > ').pop()?.substring(0, 12) || t.topic.substring(0, 12),
-    accuracy: t.accuracy,
-    fullMark: 100,
-  }));
-
   const chartTooltipStyle = {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid rgba(0,0,0,0.08)',
+    backgroundColor: 'var(--card)',
+    border: '1px solid var(--card-border)',
     borderRadius: '12px',
-    color: '#2E2B27',
+    color: 'var(--text)',
     fontSize: '0.8rem',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
   };
 
-  if (performance.totalQuizzes === 0) {
-    return (
-      <div className="dashboard animate-fadeIn">
-        <div className="dashboard-welcome">
-          <h1>Welcome, {user?.name?.split(' ')[0]}! 👋</h1>
-          <p>Start your personalized learning journey by taking your first quiz.</p>
-        </div>
-        <div className="empty-dashboard">
-          <div className="empty-dashboard-card">
-            <span className="empty-icon">🎯</span>
-            <h3>No quizzes taken yet</h3>
-            <p>Take your first quiz to see your personalized analytics dashboard.</p>
-            <Link to="/quiz/select" className="btn btn-primary btn-lg">
-              <LuBookOpen /> Take Your First Quiz
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const firstName = user?.name?.split(' ')[0] || 'Student';
 
   return (
-    <div className="dashboard animate-fadeIn">
-      {/* Welcome */}
-      <div className="dashboard-welcome">
-        <div>
-          <h1>Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
-          <p>Here's your learning progress overview</p>
+    <div className="dashboard sd-dashboard sd-dashboard--genz animate-fadeIn">
+      <section className="sd-hero">
+        <div className="sd-hero-bg" aria-hidden />
+        <div className="sd-hero-inner">
+          <div className="sd-hero-copy">
+            <p className="sd-hero-eyebrow">
+              <LuSparkles aria-hidden /> Your learning cockpit
+            </p>
+            <h1>Welcome back, {firstName}</h1>
+            <p className="sd-hero-sub">
+              {user?.studyKeywords
+                ? <>Your focus: <em className="sd-kw-chip">{user.studyKeywords.slice(0, 120)}{user.studyKeywords.length > 120 ? '…' : ''}</em></>
+                : hasQuizActivity
+                  ? 'Track domains + library skills, spot gaps, and follow next steps from your quizzes.'
+                  : 'Complete onboarding to see domain radar and tailored guidance.'}
+            </p>
+          </div>
+          <div className="sd-hero-actions">
+            <Link to="/quiz/select" className="btn btn-primary sd-hero-cta" id="dashboard-take-quiz">
+              <LuBookOpen /> {hasQuizActivity ? 'Take a quiz' : 'Start first quiz'}
+            </Link>
+            {hasQuizActivity && (
+              <Link to="/learning-path" className="btn btn-secondary sd-hero-secondary">
+                <LuRoute /> Learning path
+              </Link>
+            )}
+          </div>
         </div>
-        <Link to="/quiz/select" className="btn btn-primary" id="dashboard-take-quiz">
-          <LuBookOpen /> Take Quiz
-        </Link>
-      </div>
+      </section>
 
-      {/* Stats Row */}
-      <div className="dashboard-stats">
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(212,100,92,0.08)', color: '#D4645C' }}>
+      {!hasQuizActivity && (
+        <div className="sd-empty-banner glass-card">
+          <LuCompass className="sd-empty-banner-icon" aria-hidden />
+          <div>
+            <strong>No quiz history yet</strong>
+            <p>Your skill radar and suggestions below use demo baselines until you complete quizzes. One short quiz is enough to personalize everything.</p>
+          </div>
+          <Link to="/quiz/select" className="btn btn-primary btn-sm">Browse quizzes</Link>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="dashboard-stats sd-stats">
+        <div className="stat-card sd-stat-card">
+          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(212,100,92,0.12)', color: '#D4645C' }}>
             <LuTarget />
           </div>
           <div className="stat-value">{performance.overallAccuracy}%</div>
-          <div className="stat-label">Overall Accuracy</div>
+          <div className="stat-label">Overall accuracy</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(76,175,130,0.08)', color: '#4CAF82' }}>
+        <div className="stat-card sd-stat-card">
+          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(76,175,130,0.12)', color: '#4CAF82' }}>
             <LuTrophy />
           </div>
           <div className="stat-value">{performance.totalQuizzes}</div>
-          <div className="stat-label">Quizzes Completed</div>
+          <div className="stat-label">Quizzes completed</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(224,165,70,0.08)', color: '#E0A546' }}>
+        <div className="stat-card sd-stat-card">
+          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(224,165,70,0.12)', color: '#E0A546' }}>
             <LuZap />
           </div>
           <div className="stat-value">{user?.xp || 0}</div>
           <div className="stat-label">Total XP</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(212,100,92,0.06)', color: '#D4645C' }}>
+        <div className="stat-card sd-stat-card">
+          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(91,143,185,0.12)', color: '#5B8FB9' }}>
             <LuFlame />
           </div>
           <div className="stat-value">{performance.totalCorrect}/{performance.totalQuestions}</div>
-          <div className="stat-label">Correct Answers</div>
+          <div className="stat-label">Correct answers</div>
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="dashboard-charts">
-        {/* Accuracy Trend */}
-        <div className="chart-card">
-          <h3 className="chart-title">
-            <LuTrendingUp /> Performance Trend
-          </h3>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                <XAxis dataKey="quiz" stroke="#B5AFA4" fontSize={12} />
-                <YAxis stroke="#B5AFA4" fontSize={12} domain={[0, 100]} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Line
-                  type="monotone"
-                  dataKey="accuracy"
-                  stroke="#D4645C"
-                  strokeWidth={2.5}
-                  dot={{ fill: '#D4645C', r: 4 }}
-                  activeDot={{ r: 6, fill: '#B04A43' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Radar + guidance + suggestions */}
+      <section className="sd-main-grid">
+        <div className="sd-radar-column">
+          {showDomainRadar && (
+            <div className="chart-card sd-radar-card sd-radar-card--domain">
+              <div className="sd-radar-head">
+                <h3 className="chart-title sd-radar-title">
+                  <LuSparkles /> Your domains
+                </h3>
+                <p className="sd-radar-caption">
+                  Based on what you chose{practicedDomains > 0 ? ` · ${practicedDomains} signals` : ''}. Scores blend your onboarding quiz and any follow-up attempts.
+                </p>
+              </div>
+              <div className="sd-radar-chart-wrap sd-radar-chart-wrap--compact">
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={domainRadarRows} cx="50%" cy="52%" outerRadius="78%">
+                    <defs>
+                      <linearGradient id="sdRadarFillDomain" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
+                    <PolarGrid stroke="var(--border)" strokeDasharray="3 6" />
+                    <PolarAngleAxis
+                      dataKey="skill"
+                      tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 600 }}
+                      tickLine={false}
+                    />
+                    <PolarRadiusAxis
+                      angle={90}
+                      domain={[0, 100]}
+                      tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+                      tickCount={5}
+                      stroke="var(--border)"
+                    />
+                    <Tooltip content={<RadarSkillTooltip />} />
+                    <Radar
+                      dataKey="accuracy"
+                      stroke="#a78bfa"
+                      strokeWidth={2.5}
+                      fill="url(#sdRadarFillDomain)"
+                      fillOpacity={1}
+                      dot={{ r: 4, fill: '#a78bfa', strokeWidth: 0 }}
+                      isAnimationActive
+                      animationDuration={900}
+                      animationEasing="ease-out"
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-        {/* Topic Coverage Radar */}
-        {radarData.length >= 3 && (
-          <div className="chart-card">
-            <h3 className="chart-title">
-              <LuTarget /> Topic Coverage
-            </h3>
-            <div className="chart-container">
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(0,0,0,0.06)" />
-                  <PolarAngleAxis dataKey="topic" stroke="#B5AFA4" fontSize={11} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="rgba(0,0,0,0.04)" fontSize={10} />
-                  <Radar dataKey="accuracy" stroke="#D4645C" fill="#D4645C" fillOpacity={0.12} strokeWidth={2} />
+          <div className="chart-card sd-radar-card">
+            <div className="sd-radar-head">
+              <h3 className="chart-title sd-radar-title">
+                <LuTarget /> Library skills
+              </h3>
+              <p className="sd-radar-caption">
+                CodeManthan topic quizzes{practicedSkills > 0 ? ` · ${practicedSkills} subjects with data` : ''}. Take topic quizzes to grow this shape.
+              </p>
+            </div>
+            <div className="sd-radar-chart-wrap">
+              <ResponsiveContainer width="100%" height={showDomainRadar ? 260 : 320}>
+                <RadarChart data={skillRadarRows} cx="50%" cy="52%" outerRadius="78%">
+                  <defs>
+                    <linearGradient id="sdRadarFill" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#D4645C" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#5B8FB9" stopOpacity={0.2} />
+                    </linearGradient>
+                  </defs>
+                  <PolarGrid stroke="var(--border)" strokeDasharray="3 6" />
+                  <PolarAngleAxis
+                    dataKey="skill"
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 600 }}
+                    tickLine={false}
+                  />
+                  <PolarRadiusAxis
+                    angle={90}
+                    domain={[0, 100]}
+                    tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+                    tickCount={5}
+                    stroke="var(--border)"
+                  />
+                  <Tooltip content={<RadarSkillTooltip />} />
+                  <Radar
+                    name="Accuracy"
+                    dataKey="accuracy"
+                    stroke="#D4645C"
+                    strokeWidth={2.5}
+                    fill="url(#sdRadarFill)"
+                    fillOpacity={1}
+                    dot={{ r: 4, fill: '#D4645C', strokeWidth: 0 }}
+                    isAnimationActive
+                    animationDuration={900}
+                    animationEasing="ease-out"
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Difficulty Breakdown + Subject Performance */}
-      <div className="dashboard-charts">
-        <div className="chart-card">
-          <h3 className="chart-title">Difficulty Breakdown</h3>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={difficultyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                <XAxis dataKey="difficulty" stroke="#B5AFA4" fontSize={12} />
-                <YAxis stroke="#B5AFA4" fontSize={12} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="correct" fill="#4CAF82" radius={[4, 4, 0, 0]} name="Correct" />
-                <Bar dataKey="total" fill="rgba(0,0,0,0.06)" radius={[4, 4, 0, 0]} name="Total" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
         </div>
 
-        <div className="chart-card">
-          <h3 className="chart-title">Subject Accuracy</h3>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={subjectData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                <XAxis type="number" domain={[0, 100]} stroke="#B5AFA4" fontSize={12} />
-                <YAxis dataKey="subject" type="category" stroke="#B5AFA4" fontSize={12} width={80} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="accuracy" fill="#D4645C" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="sd-insights-stack">
+          <div className="glass-card sd-guidance-card">
+            <h3 className="card-title sd-card-title">
+              <LuCompass /> Guidance
+            </h3>
+            <ol className="sd-guidance-steps">
+              {guidanceSteps.map((s) => (
+                <li key={s.n} className="sd-guidance-step">
+                  <span className="sd-guidance-num">{s.n}</span>
+                  <div>
+                    <strong>{s.title}</strong>
+                    <p>{s.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="glass-card sd-suggestions-card">
+            <h3 className="card-title sd-card-title">
+              <LuLightbulb /> Suggestions to improve
+            </h3>
+            <ul className="sd-suggestion-list">
+              {suggestions.map((s) => (
+                <li key={s.id} className={`sd-suggestion sd-suggestion--${s.kind}`}>
+                  <span className="sd-suggestion-icon" aria-hidden>
+                    {s.kind === 'focus' && <LuTriangleAlert />}
+                    {s.kind === 'explore' && <LuBookOpen />}
+                    {s.kind === 'habit' && <LuTrendingUp />}
+                    {s.kind === 'celebrate' && <LuCircleCheck />}
+                  </span>
+                  <div>
+                    <strong>{s.title}</strong>
+                    <p>{s.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Weak Areas + Quick Actions */}
-      <div className="dashboard-bottom">
-        {/* Weak Areas */}
-        <div className="glass-card weak-areas-card">
+      {hasQuizActivity && (
+        <>
+          <div className="dashboard-charts sd-charts-row">
+            <div className="chart-card sd-chart-animate">
+              <h3 className="chart-title">
+                <LuTrendingUp /> Recent performance
+              </h3>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                    <XAxis dataKey="quiz" stroke="var(--text-muted)" fontSize={12} />
+                    <YAxis stroke="var(--text-muted)" fontSize={12} domain={[0, 100]} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Line
+                      type="monotone"
+                      dataKey="accuracy"
+                      stroke="#D4645C"
+                      strokeWidth={2.5}
+                      dot={{ fill: '#D4645C', r: 4 }}
+                      activeDot={{ r: 6, fill: '#B04A43' }}
+                      isAnimationActive
+                      animationDuration={700}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="chart-card sd-chart-animate">
+              <h3 className="chart-title">Difficulty mix</h3>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={difficultyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                    <XAxis dataKey="difficulty" stroke="var(--text-muted)" fontSize={12} />
+                    <YAxis stroke="var(--text-muted)" fontSize={12} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Bar dataKey="correct" fill="#4CAF82" radius={[4, 4, 0, 0]} name="Correct" />
+                    <Bar dataKey="total" fill="rgba(0,0,0,0.06)" radius={[4, 4, 0, 0]} name="Total" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-charts">
+            <div className="chart-card sd-chart-animate">
+              <h3 className="chart-title">Subject accuracy</h3>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={subjectData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                    <XAxis type="number" domain={[0, 100]} stroke="var(--text-muted)" fontSize={12} />
+                    <YAxis dataKey="subject" type="category" stroke="var(--text-muted)" fontSize={11} width={100} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
+                    <Bar dataKey="accuracy" fill="#5B8FB9" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="dashboard-bottom sd-bottom">
+        <div className="glass-card weak-areas-card sd-panel">
           <h3 className="card-title">
-            <LuTriangleAlert style={{ color: '#E0A546' }} /> Weak Areas
+            <LuTriangleAlert style={{ color: '#E0A546' }} /> Topics to review
           </h3>
           {performance.weakAreas.length > 0 ? (
             <div className="weak-areas-list">
@@ -245,35 +451,38 @@ export default function StudentDashboard() {
                         width: `${area.accuracy}%`,
                         background: area.accuracy < 40 ? 'var(--danger)' : 'linear-gradient(90deg, var(--accent), var(--accent-light))',
                       }}
-                    ></div>
+                    />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="no-weak-areas">🎉 No weak areas detected! Keep it up!</p>
+            <p className="no-weak-areas">No topics flagged below threshold. Keep practicing across subjects.</p>
           )}
-          <Link to="/learning-path" className="btn btn-secondary btn-sm" style={{ marginTop: 'var(--s4)' }}>
-            <LuRoute /> View AI Learning Path
+          <Link to="/learning-path" className="btn btn-secondary btn-sm sd-panel-link">
+            <LuRoute /> Open learning path
           </Link>
         </div>
 
-        {/* Recent Quizzes */}
-        <div className="glass-card recent-quizzes-card">
-          <h3 className="card-title">Recent Quizzes</h3>
-          <div className="recent-quizzes-list">
-            {history.slice(-5).reverse().map((quiz, idx) => (
-              <div key={idx} className="recent-quiz-item">
-                <div className="recent-quiz-info">
-                  <span className="recent-quiz-topic">{quiz.topic}</span>
-                  <span className="recent-quiz-date">{new Date(quiz.timestamp).toLocaleDateString()}</span>
+        <div className="glass-card recent-quizzes-card sd-panel">
+          <h3 className="card-title">Recent quizzes</h3>
+          {history.length > 0 ? (
+            <div className="recent-quizzes-list">
+              {history.slice(-5).reverse().map((quiz, idx) => (
+                <div key={idx} className="recent-quiz-item">
+                  <div className="recent-quiz-info">
+                    <span className="recent-quiz-topic">{quiz.topic}</span>
+                    <span className="recent-quiz-date">{new Date(quiz.timestamp).toLocaleDateString()}</span>
+                  </div>
+                  <div className={`recent-quiz-score ${quiz.correctAnswers / quiz.totalQuestions >= 0.7 ? 'good' : 'needs-work'}`}>
+                    {Math.round((quiz.correctAnswers / quiz.totalQuestions) * 100)}%
+                  </div>
                 </div>
-                <div className={`recent-quiz-score ${quiz.correctAnswers / quiz.totalQuestions >= 0.7 ? 'good' : 'needs-work'}`}>
-                  {Math.round((quiz.correctAnswers / quiz.totalQuestions) * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="sd-muted">Your completed quizzes will appear here.</p>
+          )}
         </div>
       </div>
     </div>

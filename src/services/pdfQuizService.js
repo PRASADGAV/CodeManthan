@@ -4,7 +4,7 @@
  */
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 /**
  * Extract text from a PDF file using the browser's PDF.js (via pdf-lib-like approach).
@@ -87,17 +87,33 @@ Generate the quiz now. Return ONLY the JSON object:`;
  */
 function parseLLMResponse(responseText) {
   let cleaned = responseText.trim();
+  // Strip markdown fences (```json ... ``` or ``` ... ```)
   cleaned = cleaned.replace(/^```(?:json)?\s*/g, '').replace(/\s*```$/g, '').trim();
+
+  // Remove trailing commas before ] or } (common LLM mistake)
+  function removeTrailingCommas(str) {
+    return str.replace(/,\s*([\]}])/g, '$1');
+  }
 
   let data;
   try {
     data = JSON.parse(cleaned);
   } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) {
-      data = JSON.parse(match[0]);
-    } else {
-      throw new Error('AI response is not valid JSON');
+    // Try after removing trailing commas
+    try {
+      data = JSON.parse(removeTrailingCommas(cleaned));
+    } catch {
+      // Try extracting the JSON object from the response
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          data = JSON.parse(match[0]);
+        } catch {
+          data = JSON.parse(removeTrailingCommas(match[0]));
+        }
+      } else {
+        throw new Error('AI response is not valid JSON. Please try again.');
+      }
     }
   }
 

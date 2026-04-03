@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
-import { LuBookOpen, LuArrowRight, LuBrain, LuFlaskConical, LuMonitor, LuLanguages, LuStar, LuGauge } from 'react-icons/lu';
+import { LuBookOpen, LuArrowRight, LuBrain, LuMonitor, LuCode, LuCpu, LuBriefcase, LuStar, LuGauge } from 'react-icons/lu';
 import './QuizSelect.css';
 
 const SUBJECT_ICONS = {
-  Mathematics: <LuBrain />,
-  Science: <LuFlaskConical />,
-  'Computer Science': <LuMonitor />,
-  English: <LuLanguages />,
+  'Full Stack Web Development': <LuMonitor />,
+  'DSA': <LuBrain />,
+  'OOPs using Java': <LuCode />,
+  'Software Engineering': <LuCpu />,
+  'Finance': <LuBriefcase />,
 };
 
 const SUBJECT_COLORS = {
-  Mathematics: { bg: 'rgba(212,100,92,0.06)', border: 'rgba(212,100,92,0.15)', color: '#D4645C' },
-  Science: { bg: 'rgba(76,175,130,0.06)', border: 'rgba(76,175,130,0.15)', color: '#4CAF82' },
-  'Computer Science': { bg: 'rgba(224,165,70,0.06)', border: 'rgba(224,165,70,0.15)', color: '#E0A546' },
-  English: { bg: 'rgba(91,143,185,0.06)', border: 'rgba(91,143,185,0.15)', color: '#5B8FB9' },
+  'Full Stack Web Development': { bg: 'rgba(91,143,185,0.06)', border: 'rgba(91,143,185,0.15)', color: '#5B8FB9' },
+  'DSA': { bg: 'rgba(224,165,70,0.06)', border: 'rgba(224,165,70,0.15)', color: '#E0A546' },
+  'OOPs using Java': { bg: 'rgba(212,100,92,0.06)', border: 'rgba(212,100,92,0.15)', color: '#D4645C' },
+  'Software Engineering': { bg: 'rgba(76,175,130,0.06)', border: 'rgba(76,175,130,0.15)', color: '#4CAF82' },
+  'Finance': { bg: 'rgba(167,139,250,0.06)', border: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
 };
 
 const DIFFICULTY_INFO = {

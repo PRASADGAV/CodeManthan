@@ -75,6 +75,9 @@
   border-color: var(--accent); background: var(--accent-muted);
   transform: translateX(4px);
 }
+.option-btn.selected {
+  border-color: var(--accent); background: var(--accent-muted);
+}
 .option-btn .option-letter {
   width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;

@@ -1,150 +1,228 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getPerformanceData, getQuizHistory } from '../services/storageService';
+import { getQuizHistory } from '../services/storageService';
 import { getAdaptiveLearningPath, identifyWeakAreas } from '../services/aiService';
 import { resourceBank } from '../data/quizData';
-import { LuRoute, LuSparkles, LuTarget, LuBookOpen, LuExternalLink, LuRefreshCw, LuArrowRight, LuLoader } from 'react-icons/lu';
+import { parseRoadmapSteps } from '../utils/learningPathParse';
+import {
+  LuRoute, LuSparkles, LuTarget, LuBookOpen, LuExternalLink, LuArrowRight, LuLoader,
+  LuRocket,
+} from 'react-icons/lu';
 import './LearningPath.css';
 
 export default function LearningPath() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [aiPath, setAiPath] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-
-  const [performance, setPerformance] = useState(null);
   const [history, setHistory] = useState([]);
   const [weakAreas, setWeakAreas] = useState([]);
+  const [prompt, setPrompt] = useState('');
 
   useEffect(() => {
-    async function loadDataAndGenerate() {
+    let cancelled = false;
+    async function run() {
       if (!user?.id) return;
+      setInitialLoading(true);
       try {
-        const [perf, hist] = await Promise.all([
-          getPerformanceData(user.id),
-          getQuizHistory(user.id),
-        ]);
-        
-        setPerformance(perf);
+        const hist = await getQuizHistory(user.id);
+        if (cancelled) return;
         setHistory(hist);
-        
         const weak = identifyWeakAreas(hist);
         setWeakAreas(weak);
-
-        // Auto-generate AI learning path
+        const p = user?.learningPathPrompt || '';
+        setPrompt(p);
         setLoading(true);
-        const path = await getAdaptiveLearningPath(weak, hist, user.level || 1);
-        setAiPath(path);
+        const path = await getAdaptiveLearningPath(weak, hist, user?.level || 1, {
+          userPrompt: p,
+          studyDomainIds: user?.studyDomainIds || [],
+          studyKeywords: user?.studyKeywords || '',
+          onboardingQuizSummary: user?.onboardingQuizSummary || '',
+        });
+        if (!cancelled) setAiPath(path);
       } catch (err) {
-        console.error("Failed to load learning path data", err);
+        console.error('Failed to load learning path data', err);
       } finally {
-        setLoading(false);
-        setInitialLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setInitialLoading(false);
+        }
       }
     }
-    loadDataAndGenerate();
-  }, [user?.id, user?.level]);
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.level, user?.learningPathPrompt, user?.onboardingQuizSummary, user?.studyDomainIds, user?.studyKeywords]);
 
   const generatePath = async () => {
     setLoading(true);
-    const path = await getAdaptiveLearningPath(weakAreas, history, user?.level || 1);
-    setAiPath(path);
-    setLoading(false);
+    await updateUser({ learningPathPrompt: prompt.trim() });
+    try {
+      const path = await getAdaptiveLearningPath(weakAreas, history, user?.level || 1, {
+        userPrompt: prompt.trim(),
+        studyDomainIds: user?.studyDomainIds || [],
+        studyKeywords: user?.studyKeywords || '',
+        onboardingQuizSummary: user?.onboardingQuizSummary || '',
+      });
+      setAiPath(path);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Get resources for weak topics
-  const getResourcesForTopic = (subject, topic) => {
-    return resourceBank[subject]?.[topic] || [];
-  };
+  const roadmapSteps = parseRoadmapSteps(aiPath);
+
+  const getResourcesForTopic = (subject, topic) => resourceBank[subject]?.[topic] || [];
 
   if (initialLoading) {
-     return (
-      <div className="learning-path-page animate-fadeIn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <LuLoader className="pq-spin" style={{ fontSize: '2rem', color: 'var(--accent)' }} />
+    return (
+      <div className="learning-path-page lp-page lp-loading animate-fadeIn">
+        <LuLoader className="pq-spin lp-spin" aria-hidden />
+        <p>Building your path…</p>
       </div>
     );
   }
 
   return (
-    <div className="learning-path-page animate-fadeIn">
-      <div className="page-header">
-        <div className="page-header-icon">
-          <LuRoute />
-        </div>
-        <div>
-          <h1>AI Learning Path</h1>
-          <p>Your personalized study plan powered by AI</p>
+    <div className="learning-path-page lp-page animate-fadeIn">
+      <div className="lp-hero">
+        <div className="lp-hero-glow" aria-hidden />
+        <div className="page-header lp-header">
+          <div className="page-header-icon lp-icon-bounce">
+            <LuRoute />
+          </div>
+          <div>
+            <h1>Your roadmap</h1>
+            <p className="lp-sub">Shaped by your first quiz + your goals. Tweak the prompt anytime.</p>
+          </div>
         </div>
       </div>
 
-      {/* AI Generated Study Plan */}
-      <div className="ai-path-card glass-card">
-        <div className="ai-path-header">
-          <div className="ai-path-title">
-            <LuSparkles style={{ color: '#a78bfa' }} />
-            <h2>Your Adaptive Study Plan</h2>
-          </div>
-          <button className="btn btn-secondary btn-sm" onClick={generatePath} disabled={loading}>
-            <LuRefreshCw className={loading ? 'spin-icon' : ''} />
-            {loading && !!aiPath ? 'Generating...' : 'Regenerate'}
+      {(user?.onboardingQuizSummary || user?.studyKeywords) && (
+        <div className="lp-context glass-card">
+          {user?.onboardingQuizSummary && (
+            <p className="lp-context-line"><LuSparkles /> <strong>First quiz:</strong> {user.onboardingQuizSummary}</p>
+          )}
+          {user?.studyKeywords && (
+            <p className="lp-context-line"><LuTarget /> <strong>Keywords:</strong> {user.studyKeywords}</p>
+          )}
+        </div>
+      )}
+
+      <div className="lp-prompt glass-card">
+        <label htmlFor="lp-prompt-input" className="lp-prompt-label">
+          <LuSparkles /> What do you want to study? Need a roadmap for…
+        </label>
+        <textarea
+          id="lp-prompt-input"
+          className="lp-prompt-input"
+          rows={3}
+          placeholder="e.g. Crack JEE Physics in 90 days, balance CA prep with college, NEET biology deep dive…"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        <div className="lp-prompt-actions">
+          <button type="button" className="btn btn-primary lp-btn-magic" onClick={generatePath} disabled={loading}>
+            {loading ? <LuLoader className="lp-spin" /> : <LuRocket />}
+            {loading ? 'Generating…' : 'Regenerate roadmap'}
           </button>
         </div>
-        
+      </div>
+
+      <div className="lp-ai-card glass-card">
+        <div className="ai-path-header">
+          <div className="ai-path-title">
+            <LuSparkles className="lp-star" />
+            <h2>Your adaptive plan</h2>
+          </div>
+        </div>
+
         {loading && !aiPath ? (
           <div className="ai-loading-full">
-             <LuLoader className="pq-spin" style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--accent)' }} />
-            <p>Analyzing your performance and generating a personalized study plan...</p>
+            <LuLoader className="pq-spin lp-spin" />
+            <p>Aligning phases to your history and prompt…</p>
           </div>
         ) : (
-          <div className="ai-path-content">
-            {aiPath.split('\n').map((line, idx) => (
-              <p key={idx} className={line.startsWith('**') ? 'ai-path-bold' : ''}>
-                {line.replace(/\*\*/g, '')}
-              </p>
-            ))}
-          </div>
+          <>
+            <div className="lp-roadmap">
+              {roadmapSteps.length === 0 ? (
+                <div className="ai-path-content lp-fallback-text">
+                  {(aiPath || '').split('\n').map((line, idx) => (
+                    <p key={idx} className={line.includes('**') ? 'ai-path-bold' : ''}>
+                      {line.replace(/\*\*/g, '')}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                roadmapSteps.map((step, idx) => (
+                  <div key={step.id} className="lp-node" style={{ animationDelay: `${idx * 0.08}s` }}>
+                    <div className="lp-node-rail" aria-hidden />
+                    <div className="lp-node-badge">{idx + 1}</div>
+                    <div className="lp-node-body">
+                      <h3>{step.title}</h3>
+                      {step.lines?.length > 0 && (
+                        <ul>
+                          {step.lines.map((line, j) => (
+                            <li key={j}>{line}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Weak Areas Detail */}
       {weakAreas.length > 0 && (
         <div className="weak-detail-section">
-          <h2 className="section-title-small">
-            <LuTarget style={{ color: '#E0A546' }} /> Focus Areas
+          <h2 className="section-title-small lp-section-title">
+            <LuTarget style={{ color: '#E0A546' }} /> Focus areas (from quizzes)
           </h2>
           <div className="weak-detail-grid">
             {weakAreas.map((area, idx) => {
               const resources = getResourcesForTopic(area.subject, area.topic);
               return (
-                <div key={idx} className="weak-detail-card glass-card">
+                <div key={idx} className="weak-detail-card glass-card lp-card-pop">
                   <div className="weak-detail-header">
                     <div>
                       <span className="weak-detail-subject">{area.subject}</span>
                       <h3>{area.topic}</h3>
                     </div>
-                    <div className="weak-detail-accuracy" style={{
-                      color: area.accuracy < 40 ? '#f43f5e' : area.accuracy < 60 ? '#E0A546' : '#3b82f6'
-                    }}>
+                    <div
+                      className="weak-detail-accuracy"
+                      style={{
+                        color: area.accuracy < 40 ? '#f43f5e' : area.accuracy < 60 ? '#E0A546' : '#3b82f6',
+                      }}
+                    >
                       {area.accuracy}%
                     </div>
                   </div>
 
                   <div className="progress-bar" style={{ marginBottom: 'var(--s4)' }}>
-                    <div className="progress-fill" style={{
-                      width: `${area.accuracy}%`,
-                      background: area.accuracy < 40 ? 'var(--gradient-danger)' : 'var(--gradient-warm)',
-                    }}></div>
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${area.accuracy}%`,
+                        background: area.accuracy < 40 ? 'var(--gradient-danger)' : 'var(--gradient-warm)',
+                      }}
+                    />
                   </div>
 
                   <div className="weak-detail-stats">
                     <span>Correct: {area.correct}/{area.total}</span>
-                    <span>Priority: {area.accuracy < 40 ? '🔴 High' : area.accuracy < 60 ? '🟡 Medium' : '🟢 Low'}</span>
+                    <span>Priority: {area.accuracy < 40 ? 'High' : area.accuracy < 60 ? 'Medium' : 'Low'}</span>
                   </div>
 
                   {resources.length > 0 && (
                     <div className="weak-detail-resources">
-                      <h4>📚 Recommended Resources</h4>
+                      <h4>Recommended resources</h4>
                       {resources.map((res, ridx) => (
                         <a key={ridx} href={res.url} target="_blank" rel="noopener noreferrer" className="resource-link">
                           <span>{res.type === 'video' ? '🎥' : res.type === 'article' ? '📄' : '💻'} {res.title}</span>
@@ -161,12 +239,12 @@ export default function LearningPath() {
       )}
 
       {weakAreas.length === 0 && (
-        <div className="all-good-card glass-card">
+        <div className="all-good-card glass-card lp-all-good">
           <span className="all-good-icon">🎉</span>
-          <h3>You're doing great!</h3>
-          <p>No significant weak areas detected. Keep practicing to maintain your skills, or try harder difficulty levels!</p>
-          <Link to="/quiz/select" className="btn btn-primary">
-            <LuBookOpen /> Take a Quiz
+          <h3>Looking strong</h3>
+          <p>No big weak areas from library quizzes yet. Keep going, or take a quiz to sharpen the roadmap.</p>
+          <Link to="/quiz/select" className="btn btn-primary lp-btn-magic">
+            <LuBookOpen /> Take a quiz
             <LuArrowRight />
           </Link>
         </div>
