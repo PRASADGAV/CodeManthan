@@ -4,14 +4,14 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
   animation: fadeIn var(--dur-base) var(--ease-out);
   overflow-y: auto;
-  padding: var(--s6);
+  padding: var(--s8);
 }
 
 .ssm-container {
@@ -20,10 +20,12 @@
   max-height: 90vh;
   overflow-y: auto;
   background: var(--bg);
-  border-radius: var(--r-2xl);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.1);
   animation: fadeInUp var(--dur-slow) var(--ease-out);
   position: relative;
+  /* ensure content never touches the rounded edges */
+  overflow: hidden;
 }
 
 .ssm-container::-webkit-scrollbar { width: 4px; }
@@ -233,7 +235,7 @@
 
 /* ── Quiz Step ── */
 .ssm-quiz {
-  padding: var(--s6) var(--s8) var(--s8);
+  padding: 32px 44px 44px;
   animation: fadeInUp var(--dur-slow) var(--ease-out);
 }
 
@@ -450,7 +452,7 @@
 
 /* ── Result Step ── */
 .ssm-result {
-  padding: var(--s8);
+  padding: 48px 44px 52px;
   text-align: center;
   animation: fadeInUp var(--dur-slow) var(--ease-out);
 }
@@ -507,27 +509,28 @@
 
 /* ═══ Gen-Z setup — domains + keywords ═══ */
 .ssm-gen .ssm-gen__container {
-  max-width: 640px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, var(--bg) 40%);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(167, 139, 250, 0.12) inset;
+  max-width: 660px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.2), 0 0 0 1px rgba(167,139,250,0.1) inset;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .ssm-gen__setup {
   position: relative;
-  padding: var(--s8) var(--s7) var(--s10);
+  /* generous padding: 48px top, 44px sides, 52px bottom */
+  padding: 48px 44px 52px;
   overflow: hidden;
 }
 
 .ssm-gen__glow {
   position: absolute;
-  inset: -40% -20% auto -20%;
-  height: 70%;
-  background: conic-gradient(from 180deg at 50% 50%, rgba(212, 100, 92, 0.2), rgba(167, 139, 250, 0.25), rgba(91, 143, 185, 0.2), rgba(212, 100, 92, 0.2));
-  filter: blur(48px);
-  opacity: 0.55;
+  inset: -60% -30% auto -30%;
+  height: 60%;
+  background: conic-gradient(from 180deg at 50% 50%, rgba(212,100,92,0.18), rgba(167,139,250,0.22), rgba(91,143,185,0.18), rgba(212,100,92,0.18));
+  filter: blur(56px);
+  opacity: 0.45;
   pointer-events: none;
   animation: ssmHue 12s ease-in-out infinite;
 }
@@ -705,4 +708,125 @@
   .ssm-body, .ssm-info, .ssm-quiz, .ssm-result { padding: var(--s4); }
   .ssm-subject-grid { grid-template-columns: 1fr; }
   .ssm-subject-card { padding: var(--s4); }
+}
+
+/* ═══ Spacing overrides — fix edges touching content ═══ */
+
+/* badge — match site accent pill style */
+.ssm-gen__badge {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: var(--s2);
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-muted);
+  border: 1px solid rgba(212,100,92,0.2);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  margin-bottom: var(--s5);
+}
+
+/* title — plain, no gradient clip (avoids edge clipping) */
+.ssm-gen__title {
+  position: relative; z-index: 1;
+  font-family: var(--font-serif);
+  font-size: 1.8rem; font-weight: 400;
+  color: var(--text);
+  margin: 0 0 var(--s4);
+  line-height: 1.2;
+  background: none;
+  -webkit-text-fill-color: var(--text);
+  animation: none;
+}
+
+.ssm-gen__lead {
+  position: relative; z-index: 1;
+  font-size: 0.92rem; color: var(--text-secondary);
+  line-height: 1.7; margin: 0 0 var(--s7);
+}
+
+.ssm-gen__domains {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s7);
+}
+
+.ssm-gen__kw-label {
+  position: relative; z-index: 1;
+  display: block;
+  font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: var(--s2);
+}
+
+.ssm-gen__textarea {
+  position: relative; z-index: 1;
+  width: 100%;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  padding: var(--s4) var(--s5);
+  font-size: 0.9rem; font-family: inherit;
+  resize: vertical; min-height: 96px;
+  margin-bottom: var(--s5);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ssm-gen__textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(212,100,92,0.08);
+}
+
+.ssm-gen__error {
+  position: relative; z-index: 1;
+  color: var(--danger); font-size: 0.85rem; margin: 0 0 var(--s3);
+}
+
+.ssm-gen__cta {
+  position: relative; z-index: 1;
+  width: 100%; justify-content: center;
+  border-radius: var(--r-full);
+  padding: 14px var(--s6);
+  font-size: 1rem; font-weight: 700;
+  box-shadow: 0 6px 24px rgba(212,100,92,0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ssm-gen__cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(212,100,92,0.42);
+}
+.ssm-gen__cta:active:not(:disabled) { transform: scale(0.98); }
+
+/* domain cards — use site card style */
+.ssm-gen__domain {
+  text-align: left;
+  padding: var(--s4) var(--s5);
+  border-radius: var(--r-xl);
+  border: 1.5px solid var(--card-border);
+  background: var(--card);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  color: var(--text);
+  box-shadow: var(--card-shadow);
+}
+.ssm-gen__domain:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+  border-color: var(--border-strong);
+}
+.ssm-gen__domain.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(212,100,92,0.12), var(--card-shadow-hover);
+  background: var(--accent-muted);
+}
+
+/* responsive */
+@media (max-width: 640px) {
+  .ssm-gen__setup { padding: 32px 24px 40px; }
+  .ssm-quiz       { padding: 24px 20px 32px; }
+  .ssm-result     { padding: 32px 24px 40px; }
 }

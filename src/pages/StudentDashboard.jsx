@@ -172,7 +172,7 @@ export default function StudentDashboard() {
             </p>
           </div>
           <div className="sd-hero-actions">
-            <Link to="/quiz/select" className="btn btn-primary sd-hero-cta" id="dashboard-take-quiz">
+            <Link to="/quiz/select" className="btn-fold" id="dashboard-take-quiz">
               <LuBookOpen /> {hasQuizActivity ? 'Take a quiz' : 'Start first quiz'}
             </Link>
             {hasQuizActivity && (
@@ -214,34 +214,75 @@ export default function StudentDashboard() {
       )}
 
       <div className="dashboard-stats sd-stats">
-        <div className="stat-card sd-stat-card">
-          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(212,100,92,0.12)', color: '#D4645C' }}>
-            <LuTarget />
+
+        {/* Flip Card 1 — Overall Accuracy */}
+        <div className="flip-stat-card">
+          <div className="flip-stat-inner">
+            <div className="flip-stat-front">
+              <div className="flip-stat-icon" style={{ background: 'rgba(212,100,92,0.12)', color: '#D4645C' }}>
+                <LuTarget />
+              </div>
+              <p className="flip-stat-label-front">Overall Accuracy</p>
+            </div>
+            <div className="flip-stat-back" style={{ '--fc': '#D4645C', '--fb': 'linear-gradient(135deg, rgba(212,100,92,0.12) 0%, rgba(245,158,11,0.08) 100%)' }}>
+              <div className="flip-stat-icon-back" style={{ color: '#D4645C' }}><LuTarget /></div>
+              <div className="flip-stat-value">{performance.overallAccuracy}%</div>
+              <div className="flip-stat-label-back">Overall Accuracy</div>
+            </div>
           </div>
-          <div className="stat-value">{performance.overallAccuracy}%</div>
-          <div className="stat-label">Overall accuracy</div>
         </div>
-        <div className="stat-card sd-stat-card">
-          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(76,175,130,0.12)', color: '#4CAF82' }}>
-            <LuTrophy />
+
+        {/* Flip Card 2 — Quizzes Completed */}
+        <div className="flip-stat-card">
+          <div className="flip-stat-inner">
+            <div className="flip-stat-front">
+              <div className="flip-stat-icon" style={{ background: 'rgba(76,175,130,0.12)', color: '#4CAF82' }}>
+                <LuTrophy />
+              </div>
+              <p className="flip-stat-label-front">Quizzes Completed</p>
+            </div>
+            <div className="flip-stat-back" style={{ '--fc': '#4CAF82', '--fb': 'linear-gradient(135deg, rgba(76,175,130,0.12) 0%, rgba(5,150,105,0.08) 100%)' }}>
+              <div className="flip-stat-icon-back" style={{ color: '#4CAF82' }}><LuTrophy /></div>
+              <div className="flip-stat-value">{performance.totalQuizzes}</div>
+              <div className="flip-stat-label-back">Quizzes Completed</div>
+            </div>
           </div>
-          <div className="stat-value">{performance.totalQuizzes}</div>
-          <div className="stat-label">Quizzes completed</div>
         </div>
-        <div className="stat-card sd-stat-card">
-          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(224,165,70,0.12)', color: '#E0A546' }}>
-            <LuZap />
+
+        {/* Flip Card 3 — Total XP */}
+        <div className="flip-stat-card">
+          <div className="flip-stat-inner">
+            <div className="flip-stat-front">
+              <div className="flip-stat-icon" style={{ background: 'rgba(224,165,70,0.12)', color: '#E0A546' }}>
+                <LuZap />
+              </div>
+              <p className="flip-stat-label-front">Total XP</p>
+            </div>
+            <div className="flip-stat-back" style={{ '--fc': '#E0A546', '--fb': 'linear-gradient(135deg, rgba(224,165,70,0.12) 0%, rgba(217,119,6,0.08) 100%)' }}>
+              <div className="flip-stat-icon-back" style={{ color: '#E0A546' }}><LuZap /></div>
+              <div className="flip-stat-value">{user?.xp || 0}</div>
+              <div className="flip-stat-label-back">Total XP</div>
+            </div>
           </div>
-          <div className="stat-value">{user?.xp || 0}</div>
-          <div className="stat-label">Total XP</div>
         </div>
-        <div className="stat-card sd-stat-card">
-          <div className="stat-icon sd-stat-icon" style={{ background: 'rgba(91,143,185,0.12)', color: '#5B8FB9' }}>
-            <LuFlame />
+
+        {/* Flip Card 4 — Correct Answers */}
+        <div className="flip-stat-card">
+          <div className="flip-stat-inner">
+            <div className="flip-stat-front">
+              <div className="flip-stat-icon" style={{ background: 'rgba(91,143,185,0.12)', color: '#5B8FB9' }}>
+                <LuFlame />
+              </div>
+              <p className="flip-stat-label-front">Correct Answers</p>
+            </div>
+            <div className="flip-stat-back" style={{ '--fc': '#5B8FB9', '--fb': 'linear-gradient(135deg, rgba(91,143,185,0.12) 0%, rgba(59,130,246,0.08) 100%)' }}>
+              <div className="flip-stat-icon-back" style={{ color: '#5B8FB9' }}><LuFlame /></div>
+              <div className="flip-stat-value">{performance.totalCorrect}/{performance.totalQuestions}</div>
+              <div className="flip-stat-label-back">Correct Answers</div>
+            </div>
           </div>
-          <div className="stat-value">{performance.totalCorrect}/{performance.totalQuestions}</div>
-          <div className="stat-label">Correct answers</div>
         </div>
+
       </div>
 
       <section className="sd-main-grid">
