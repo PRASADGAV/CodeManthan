@@ -11,6 +11,8 @@ import LearningPath from './pages/LearningPath';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import PdfQuiz from './pages/PdfQuiz';
+import ResumeBuilder from './pages/ResumeBuilder';
+import PortfolioBuilder from './pages/PortfolioBuilder';
 import SubjectSelectModal from './components/SubjectSelectModal';
 
 function ProtectedRoute({ children, roles }) {
@@ -92,6 +94,16 @@ function App() {
         <Route path="/pdf-quiz" element={
           <ProtectedRoute>
             <PdfQuiz />
+          </ProtectedRoute>
+        } />
+        <Route path="/resume-builder" element={
+          <ProtectedRoute roles={['student']}>
+            <ResumeBuilder />
+          </ProtectedRoute>
+        } />
+        <Route path="/portfolio" element={
+          <ProtectedRoute roles={['student']}>
+            <PortfolioBuilder />
           </ProtectedRoute>
         } />
       </Route>

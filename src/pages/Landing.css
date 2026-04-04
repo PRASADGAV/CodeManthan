@@ -116,27 +116,30 @@
   border-radius: var(--r-xl); padding: var(--s8);
   box-shadow: var(--card-shadow);
   transition: all var(--dur-base) var(--ease-out);
+  position: relative; overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
 }
 .feature-card:hover { transform: translateY(-5px); box-shadow: var(--card-shadow-hover); }
+.feature-card:hover::before { opacity: 1; }
 .feature-icon {
   width: 48px; height: 48px; border-radius: var(--r-lg);
   background: var(--accent-muted);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.3rem; color: var(--accent); margin-bottom: var(--s5);
+  transition: transform var(--dur-base) var(--ease-spring);
 }
+.feature-card:hover .feature-icon { transform: scale(1.1) rotate(-5deg); }
 .feature-title { font-size: 1rem; font-weight: 600; margin-bottom: var(--s2); color: var(--text); }
 .feature-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
 
 /* How it works */
 .how-section { padding: var(--s24) 0; background: var(--bg-subtle); }
 .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s8); }
-.step-card { text-align: center; padding: var(--s8); }
-.step-number {
-  font-family: var(--font-serif); font-size: 3rem; font-weight: 400;
-  color: var(--accent); opacity: 0.2; margin-bottom: var(--s4);
-}
-.step-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: var(--s3); }
-.step-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
 
 /* CTA */
 .cta-section { padding: var(--s24) 0; background: var(--bg); }
@@ -145,9 +148,43 @@
   border-radius: var(--r-2xl); padding: var(--s16); text-align: center;
   box-shadow: var(--card-shadow); position: relative; overflow: hidden;
 }
+/* mesh gradient background */
+.cta-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(212,100,92,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 50%, rgba(91,143,185,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+/* dot pattern */
+.cta-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(212,100,92,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
 .cta-content { position: relative; z-index: 1; }
 .cta-content h2 { font-family: var(--font-serif); font-size: clamp(1.3rem, 2.5vw, 1.9rem); font-weight: 400; margin-bottom: var(--s4); }
 .cta-content p { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: var(--s8); }
+
+/* Step cards */
+.step-card {
+  text-align: center; padding: var(--s8);
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: var(--r-xl); box-shadow: var(--card-shadow);
+  transition: all var(--dur-base) var(--ease-out);
+  position: relative; overflow: hidden;
+}
+.step-card:hover { transform: translateY(-4px); box-shadow: var(--card-shadow-hover); }
+.step-number {
+  font-family: var(--font-serif); font-size: 3rem; font-weight: 400;
+  color: var(--accent); opacity: 0.18; margin-bottom: var(--s4);
+  line-height: 1;
+}
+.step-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: var(--s3); }
+.step-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
 
 /* Footer */
 .landing-footer { border-top: 1px solid var(--border); padding: var(--s16) 0 var(--s8); background: var(--bg); }

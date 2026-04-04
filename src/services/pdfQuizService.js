@@ -156,8 +156,10 @@ export async function generateQuizFromPdf(file, config = {}) {
     throw new Error('Could not extract enough text from the PDF. It may be scanned or image-based.');
   }
 
-  // Step 2: Call Gemini API directly
+  // Step 2: Call Gemini API directly (with delay for rate limits)
   const prompt = buildPrompt(text, config);
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
     method: 'POST',
@@ -172,6 +174,9 @@ export async function generateQuizFromPdf(file, config = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error('Gemini API Free Tier Limit Reached (15 requests/min). Please wait 60 seconds and try again!');
+    }
     const errData = await response.json().catch(() => ({}));
     const errMsg = errData?.error?.message || `Gemini API error (${response.status})`;
     throw new Error(errMsg);

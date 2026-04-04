@@ -130,8 +130,12 @@ export default function StudentDashboard() {
         if (!cancelled) setReviewLoading(false);
       }
     }
-    run();
+    const timeoutId = setTimeout(() => {
+      run();
+    }, 500);
+
     return () => {
+      clearTimeout(timeoutId);
       cancelled = true;
     };
   }, [user, performance]);

@@ -9,6 +9,8 @@ import {
   LuUsers,
   LuX,
   LuFileText,
+  LuBriefcase,
+  LuLayoutTemplate,
 } from 'react-icons/lu';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -70,6 +72,32 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>Learning Path</span>
             <span className="sidebar-badge">AI</span>
           </NavLink>
+        )}
+
+        <span className="sidebar-section-title">Career</span>
+
+        {isStudent && (
+          <>
+            <NavLink
+              to="/resume-builder"
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              onClick={onClose}
+            >
+              <LuFileText />
+              <span>Resume Builder</span>
+              <span className="sidebar-badge">New</span>
+            </NavLink>
+
+            <NavLink
+              to="/portfolio"
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              onClick={onClose}
+            >
+              <LuLayoutTemplate />
+              <span>Portfolio</span>
+              <span className="sidebar-badge">New</span>
+            </NavLink>
+          </>
         )}
 
         <span className="sidebar-section-title">Community</span>

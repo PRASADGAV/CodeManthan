@@ -13,6 +13,8 @@ const PAGE_TITLES = {
   '/profile': 'Profile & Badges',
   '/pdf-quiz': 'PDF Quiz',
   '/dashboard': 'Dashboard',
+  '/resume-builder': 'Resume Builder',
+  '/portfolio': 'Portfolio Builder',
 };
 
 export default function Navbar({ onMenuToggle }) {

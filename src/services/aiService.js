@@ -238,7 +238,10 @@ export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLev
   const claudeKey = getClaudeApiKey();
   const userMessage = buildLearningPathJsonPrompt(weakF, histF, currentLevel, context);
 
-  if (GEMINI_API_KEY) {
+  const expiry = sessionStorage.getItem('gemini_rate_limit_expiry');
+  const isGeminiBlocked = expiry && Date.now() < parseInt(expiry, 10);
+
+  if (GEMINI_API_KEY && !isGeminiBlocked) {
     const tries = [
       { temperature: 0.35, maxOutputTokens: 8192, responseMimeType: 'application/json' },
       { temperature: 0.35, maxOutputTokens: 8192 },
@@ -255,6 +258,10 @@ export async function getAdaptiveLearningPath(weakAreas, quizHistory, currentLev
         });
 
         if (!response.ok) {
+          if (response.status === 429) {
+             sessionStorage.setItem('gemini_rate_limit_expiry', Date.now() + 60000);
+             throw new Error('Rate limit hit (429). Triggering fallback.');
+          }
           const err = await response.json().catch(() => ({}));
           throw new Error(err?.error?.message || `Gemini error ${response.status}`);
         }

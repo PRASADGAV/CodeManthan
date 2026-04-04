@@ -73,8 +73,12 @@ export default function LearningPath() {
         }
       }
     }
-    run();
+    const timeoutId = setTimeout(() => {
+      run();
+    }, 500);
+
     return () => {
+      clearTimeout(timeoutId);
       cancelled = true;
     };
   }, [user?.id, user?.level, user?.learningPathPrompt, user?.onboardingQuizSummary, user?.studyDomainIds, user?.studyKeywords, user?.onboardingIntroAccuracy]);

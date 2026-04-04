@@ -293,6 +293,22 @@ export function computeDomainStats(questions, answersByIndex) {
 export async function generateReviewSuggestionsFromQuiz(context) {
   if (!GEMINI_API_KEY) return null;
 
+  const expiry = sessionStorage.getItem('gemini_rate_limit_expiry');
+  if (expiry && Date.now() < parseInt(expiry, 10)) {
+    return null; // Silent backoff
+  }
+
+  // Cache based on context string to save API quota
+  const cacheKey = 'ai_review_cache_' + JSON.stringify(context);
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {
+      // ignore parse error
+    }
+  }
+
   const prompt = `You are a concise study coach for a quiz app.
 
 STUDENT CONTEXT (JSON):
@@ -318,6 +334,12 @@ Return ONLY valid JSON (no markdown):
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        sessionStorage.setItem('gemini_rate_limit_expiry', Date.now() + 60000);
+        // Silently fail on rate limit so we don't spam the developer console
+        console.warn('Gemini Rate Limit hit. Dashboard suggestions fallback active.');
+        return null;
+      }
       const err = await response.json().catch(() => ({}));
       throw new Error(err?.error?.message || `Gemini error ${response.status}`);
     }
@@ -338,11 +360,13 @@ Return ONLY valid JSON (no markdown):
 
     if (normalized.length === 0) throw new Error('No topics in AI response');
 
-    return {
+    const resObj = {
       summary: String(data.summary || '').trim() || 'Here are focused topics to review from your recent quiz data.',
       topics: normalized,
       source: 'gemini',
     };
+    sessionStorage.setItem(cacheKey, JSON.stringify(resObj));
+    return resObj;
   } catch (e) {
     console.warn('Gemini review suggestions failed:', e);
     return null;
