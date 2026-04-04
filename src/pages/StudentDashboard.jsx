@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   LuTarget, LuTrophy, LuZap, LuFlame, LuBookOpen, LuTriangleAlert,
-  LuLoader, LuSparkles, LuCompass, LuLightbulb, LuRoute,
+  LuLoader, LuSparkles, LuCompass, LuLightbulb, LuRoute, LuStar,
 } from 'react-icons/lu';
 import {
   getKeywordRadarRows,
@@ -162,13 +162,13 @@ export default function StudentDashboard() {
             <p className="sd-hero-eyebrow">
               <LuSparkles aria-hidden /> Your learning cockpit
             </p>
-            <h1>Welcome back, {firstName}</h1>
+            <h1>Welcome back, {firstName} 👋</h1>
             <p className="sd-hero-sub">
               {user?.studyKeywords
                 ? <>Your focus: <em className="sd-kw-chip">{user.studyKeywords.slice(0, 120)}{user.studyKeywords.length > 120 ? '…' : ''}</em></>
                 : hasQuizActivity
-                  ? 'Your radar uses the keywords you typed at setup; suggestions follow your quizzes.'
-                  : 'Finish onboarding—split keywords with commas so each shows on the radar.'}
+                  ? 'Track your skills, spot gaps, and follow AI-generated next steps from your quizzes.'
+                  : 'Complete onboarding to see your domain radar and tailored guidance.'}
             </p>
           </div>
           <div className="sd-hero-actions">
@@ -181,6 +181,24 @@ export default function StudentDashboard() {
               </Link>
             )}
           </div>
+        </div>
+        {/* stat pills strip */}
+        <div className="sd-hero-stats">
+          <span className="sd-hero-stat-pill">
+            <LuZap style={{ color: '#D4645C' }} /> {user?.xp || 0} XP
+          </span>
+          <span className="sd-hero-stat-pill">
+            <LuStar style={{ color: '#10b981' }} /> Level {user?.level || 1}
+          </span>
+          <span className="sd-hero-stat-pill">
+            <LuTarget style={{ color: '#5B8FB9' }} /> {performance.overallAccuracy}% accuracy
+          </span>
+          <span className="sd-hero-stat-pill">
+            <LuFlame style={{ color: '#E0A546' }} /> {user?.loginStreak || 0} day streak
+          </span>
+          <span className="sd-hero-stat-pill">
+            <LuTrophy style={{ color: '#fbbf24' }} /> {performance.totalQuizzes} quizzes
+          </span>
         </div>
       </section>
 

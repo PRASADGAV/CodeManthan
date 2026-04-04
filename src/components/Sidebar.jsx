@@ -11,6 +11,7 @@ import {
   LuFileText,
   LuBriefcase,
   LuLayoutTemplate,
+  LuGamepad2,
 } from 'react-icons/lu';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -71,6 +72,18 @@ export default function Sidebar({ isOpen, onClose }) {
             <LuRoute />
             <span>Learning Path</span>
             <span className="sidebar-badge">AI</span>
+          </NavLink>
+        )}
+
+        {isStudent && (
+          <NavLink
+            to="/games"
+            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+            onClick={onClose}
+          >
+            <LuGamepad2 />
+            <span>Games</span>
+            <span className="sidebar-badge">New</span>
           </NavLink>
         )}
 

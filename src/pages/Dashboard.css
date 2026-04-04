@@ -182,64 +182,101 @@
   box-shadow: var(--card-shadow);
 }
 .sd-hero-bg {
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0; pointer-events: none;
   background:
-    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(212, 100, 92, 0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(91, 143, 185, 0.12) 0%, transparent 50%),
-    linear-gradient(135deg, var(--card) 0%, var(--bg-subtle) 100%);
-  pointer-events: none;
+    radial-gradient(ellipse 130% 90% at 105% -10%, rgba(212,100,92,0.13) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 70% at -5% 110%,  rgba(91,143,185,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 50% 50%,   rgba(167,139,250,0.04) 0%, transparent 70%);
 }
-/* dot pattern overlay on hero */
 .sd-hero-bg::after {
   content: '';
   position: absolute; inset: 0;
-  background-image: radial-gradient(circle, rgba(212,100,92,0.06) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image:
+    linear-gradient(0deg, transparent 24%, rgba(212,100,92,0.04) 25%, rgba(212,100,92,0.04) 26%, transparent 27%,
+      transparent 74%, rgba(212,100,92,0.04) 75%, rgba(212,100,92,0.04) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(212,100,92,0.04) 25%, rgba(212,100,92,0.04) 26%, transparent 27%,
+      transparent 74%, rgba(212,100,92,0.04) 75%, rgba(212,100,92,0.04) 76%, transparent 77%, transparent);
+  background-size: 32px 32px;
   pointer-events: none;
 }
+
+/* main content row */
 .sd-hero-inner {
-  position: relative;
+  position: relative; z-index: 1;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--s6);
+  gap: var(--s8);
   flex-wrap: wrap;
-  padding: var(--s8) var(--s8) var(--s7);
+  /* generous padding on all sides — top/bottom 40px, left/right 48px */
+  padding: 40px 48px 32px;
 }
-.sd-hero-copy h1 {
-  font-family: var(--font-serif);
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
-  font-weight: 500;
-  color: var(--text);
-  margin: 0 0 var(--s2);
-}
+
+.sd-hero-copy { flex: 1; min-width: 260px; }
+
 .sd-hero-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--accent);
-  margin: 0 0 var(--s3);
+  background: var(--accent-muted);
+  border: 1px solid rgba(212,100,92,0.2);
+  border-radius: var(--r-full);
+  padding: 5px 14px;
+  margin: 0 0 var(--s4);
 }
+
+.sd-hero-copy h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 var(--s3);
+  line-height: 1.2;
+}
+
 .sd-hero-sub {
   font-size: 0.92rem;
   color: var(--text-secondary);
-  max-width: 520px;
-  line-height: 1.55;
+  max-width: 480px;
+  line-height: 1.7;
   margin: 0;
 }
+
 .sd-hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s3);
   align-items: center;
+  flex-shrink: 0;
 }
-.sd-hero-cta { box-shadow: 0 8px 24px rgba(212, 100, 92, 0.25); }
+.sd-hero-cta { box-shadow: 0 6px 20px rgba(212,100,92,0.28); }
 .sd-hero-secondary { border-color: var(--border-strong); }
+
+/* stat pills strip — separated by a divider, with its own padding */
+.sd-hero-stats {
+  position: relative; z-index: 1;
+  display: flex; gap: var(--s3); flex-wrap: wrap;
+  /* match horizontal padding of inner, add vertical breathing room */
+  padding: 18px 48px 28px;
+  border-top: 1px solid var(--border);
+}
+
+.sd-hero-stat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 6px 16px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.sd-hero-stat-pill:hover { border-color: var(--border-strong); }
+.sd-hero-stat-pill svg { font-size: 0.85rem; }
 
 .sd-empty-banner {
   display: flex;

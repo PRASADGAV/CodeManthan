@@ -1,19 +1,39 @@
 /**
  * PDF Quiz Service — Direct Gemini API (no Python backend needed)
- * Extracts text from PDF in browser using pdf.js, then calls Gemini REST API.
+ * Extracts text from PDF in browser using pdf.js loaded from CDN (avoids Vite bundling issues).
  */
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
+// CDN version pinned to a stable 3.x build that works reliably in browsers
+const PDFJS_VERSION = '3.11.174';
+const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
 /**
- * Extract text from a PDF file using the browser's PDF.js (via pdf-lib-like approach).
- * Uses FileReader + a lightweight text extraction approach.
+ * Load pdfjs-dist from CDN once, cache on window.pdfjsLib.
+ */
+async function loadPdfJs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `${PDFJS_CDN}/pdf.min.js`;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Failed to load PDF.js from CDN. Check your internet connection.'));
+    document.head.appendChild(script);
+  });
+
+  // Set worker source
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN}/pdf.worker.min.js`;
+  return window.pdfjsLib;
+}
+
+/**
+ * Extract text from a PDF file using pdf.js loaded from CDN.
  */
 async function extractTextFromPdf(file) {
-  // Dynamically import pdfjs-dist
-  const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  const pdfjsLib = await loadPdfJs();
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

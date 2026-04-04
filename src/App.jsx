@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import PdfQuiz from './pages/PdfQuiz';
 import ResumeBuilder from './pages/ResumeBuilder';
 import PortfolioBuilder from './pages/PortfolioBuilder';
+import Games from './pages/Games';
 import SubjectSelectModal from './components/SubjectSelectModal';
 
 function ProtectedRoute({ children, roles }) {
@@ -104,6 +105,11 @@ function App() {
         <Route path="/portfolio" element={
           <ProtectedRoute roles={['student']}>
             <PortfolioBuilder />
+          </ProtectedRoute>
+        } />
+        <Route path="/games" element={
+          <ProtectedRoute roles={['student']}>
+            <Games />
           </ProtectedRoute>
         } />
       </Route>
